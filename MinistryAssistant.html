@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#0f2744"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="description" content="Ministry Assistant – Field Ministry Manager for JW congregations"/>
+<title>Ministry Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!--
+╔══════════════════════════════════════════════════════════════╗
+║           MINISTRY ASSISTANT — CONFIGURATION                 ║
+║  Replace the API_URL value in the <script> section below    ║
+║  with your deployed Google Apps Script Web App URL.         ║
+║  Format: https://script.google.com/macros/s/XXXXX/exec      ║
+╚══════════════════════════════════════════════════════════════╝
+-->
+<style>
+:root{
+  --navy:#0f2744;--navy2:#1a3c5e;--navy3:#24527a;
+  --sky:#3b82f6;--sky2:#60a5fa;--gold:#f59e0b;--gold2:#fbbf24;
+  --green:#10b981;--red:#ef4444;--white:#fff;
+  --radius:14px;--radius-sm:8px;
+  --shadow:0 4px 24px rgba(0,0,0,.12);--shadow-lg:0 8px 40px rgba(0,0,0,.18);
+  --font:'DM Sans',sans-serif;--font-serif:'DM Serif Display',serif;
+  --tr:.22s cubic-bezier(.4,0,.2,1);
+  --bg:#0a1628;--bg2:#0f2744;--bg3:#1a3c5e;
+  --surface:#162035;--surface2:#1e2d45;
+  --text:#e8f0fe;--text2:#94a3b8;
+  --border:rgba(255,255,255,.1);--card-shadow:0 4px 24px rgba(0,0,0,.35);
+}
+[data-theme="light"]{
+  --bg:#f0f5fc;--bg2:#e4edf8;--bg3:#d3e3f5;
+  --surface:#fff;--surface2:#f8fafc;
+  --text:#1e293b;--text2:#64748b;
+  --border:rgba(0,0,0,.1);--card-shadow:0 2px 16px rgba(0,0,0,.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background var(--tr),color var(--tr)}
+button{font-family:var(--font);cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:var(--font);outline:none}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* LOADER */
+#app-loader{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s,visibility .5s}
+.loader-logo{font-family:var(--font-serif);font-size:2rem;color:#fff;margin-bottom:8px}
+.loader-sub{font-size:.78rem;color:var(--gold);letter-spacing:.16em;text-transform:uppercase;margin-bottom:38px}
+.spinner{width:38px;height:38px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--sky);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#app-loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
+
+/* AUTH */
+#auth-screen{display:none;min-height:100vh;background:linear-gradient(140deg,#0b1e38 0%,#14304f 55%,#091b30 100%);align-items:center;justify-content:center;padding:24px}
+#auth-screen.active{display:flex}
+.auth-card{width:100%;max-width:420px;background:rgba(255,255,255,.06);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:38px 34px;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+.auth-logo{text-align:center;margin-bottom:30px}
+.auth-logo h1{font-family:var(--font-serif);font-size:2rem;color:#fff;line-height:1.1}
+.auth-logo p{color:var(--gold);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;margin-top:7px}
+.auth-tabs{display:flex;background:rgba(0,0,0,.25);border-radius:10px;padding:4px;margin-bottom:26px;gap:4px}
+.auth-tab{flex:1;padding:8px;border-radius:7px;font-size:.87rem;font-weight:500;color:rgba(255,255,255,.4);transition:all var(--tr);text-align:center;cursor:pointer}
+.auth-tab.active{background:var(--sky);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.4)}
+.fg{margin-bottom:16px}
+.fl{display:block;font-size:.78rem;font-weight:500;color:rgba(255,255,255,.6);margin-bottom:6px}
+.fi{width:100%;padding:11px 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:10px;color:#fff;font-size:.9rem;transition:all var(--tr)}
+.fi:focus{border-color:var(--sky);background:rgba(59,130,246,.1);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+.fi::placeholder{color:rgba(255,255,255,.25)}
+.fi option{background:#0f2744;color:#fff}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:10px;font-size:.9rem;font-weight:600;transition:all var(--tr);width:100%}
+.btn-primary{background:var(--sky);color:#fff}
+.btn-primary:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,.38)}
+.btn-primary:active{transform:translateY(0)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-sm{padding:7px 14px;font-size:.82rem;width:auto}
+.btn-icon{padding:7px;width:auto;border-radius:8px}
+.auth-foot{text-align:center;margin-top:18px;font-size:.82rem;color:rgba(255,255,255,.4)}
+.auth-foot a{color:var(--sky2);cursor:pointer}
+.auth-foot a:hover{text-decoration:underline}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+@media(max-width:400px){.frow{grid-template-columns:1fr}}
+.rem-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:17px}
+.cb-lbl{display:flex;align-items:center;gap:8px;font-size:.82rem;color:rgba(255,255,255,.5);cursor:pointer}
+.cb-lbl input{accent-color:var(--sky);width:15px;height:15px}
+.forgot{font-size:.82rem;color:var(--sky2);cursor:pointer}
+.forgot:hover{text-decoration:underline}
+
+/* APP SHELL */
+#app{display:none;min-height:100vh;flex-direction:column}
+#app.active{display:flex}
+.topbar{position:sticky;top:0;z-index:100;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18px;height:58px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(12px)}
+.tb-brand{display:flex;align-items:center;gap:9px}
+.tb-brand h2{font-family:var(--font-serif);font-size:1.18rem;color:var(--text)}
+.badge{background:var(--sky);color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
+.tb-right{display:flex;align-items:center;gap:9px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--sky);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#fff;cursor:pointer;flex-shrink:0}
+.theme-btn{width:34px;height:34px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.9rem;cursor:pointer;transition:all var(--tr)}
+.theme-btn:hover{background:var(--border)}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;min-height:0}
+.sidebar{width:210px;background:var(--bg2);border-right:1px solid var(--border);padding:16px 9px;flex-shrink:0;display:none;flex-direction:column;gap:2px;position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto}
+@media(min-width:768px){.sidebar{display:flex}}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;font-size:.86rem;font-weight:500;color:var(--text2);cursor:pointer;transition:all var(--tr)}
+.ni:hover{background:var(--surface2);color:var(--text)}
+.ni.active{background:rgba(59,130,246,.14);color:var(--sky);font-weight:600}
+.ni .ico{font-size:1rem;width:20px;text-align:center}
+.nsec{font-size:.66rem;font-weight:700;color:var(--text2);letter-spacing:.13em;text-transform:uppercase;padding:12px 12px 4px}
+.main{flex:1;overflow-y:auto;padding:22px 18px 95px;max-width:880px;margin:0 auto;width:100%}
+@media(min-width:768px){.main{padding:26px 30px 38px}}
+.page{display:none}
+.page.active{display:block;animation:fadeUp .28s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.pt{font-family:var(--font-serif);font-size:1.5rem;color:var(--text);margin-bottom:4px}
+.ps{font-size:.83rem;color:var(--text2);margin-bottom:24px}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--card-shadow);margin-bottom:18px;transition:background var(--tr)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;flex-wrap:wrap;gap:7px}
+.ct{font-weight:600;font-size:.94rem;color:var(--text)}
+.cs{font-size:.78rem;color:var(--text2);margin-top:2px}
+
+/* STAT GRID */
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 10px;box-shadow:var(--card-shadow);position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:-16px;right:-16px;width:65px;height:65px;border-radius:50%;opacity:.07}
+.sc.blue::before{background:var(--sky)}.sc.gold::before{background:var(--gold)}.sc.green::before{background:var(--green)}
+.si{font-size:1.3rem;margin-bottom:9px}
+.sv{font-size:1.5rem;font-weight:700;color:var(--text);line-height:1}
+.sl{font-size:.68rem;color:var(--text2);margin-top:3px;font-weight:500}
+
+/* PROGRESS */
+.pw{margin:13px 0}
+.ph{display:flex;justify-content:space-between;font-size:.78rem;color:var(--text2);margin-bottom:7px}
+.pb{height:9px;background:var(--border);border-radius:99px;overflow:hidden}
+.pf{height:100%;background:var(--sky);border-radius:99px;transition:width .9s ease;min-width:2px}
+.pf.gm{background:var(--green)}.pf.hw{background:var(--gold)}
+
+/* TABLE */
+.tw{overflow-x:auto;border-radius:var(--radius-sm)}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th{text-align:left;padding:9px 12px;background:var(--bg2);color:var(--text2);font-weight:600;font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1}
+td{padding:11px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.tag{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:.71rem;font-weight:600}
+.tag.t-ok,.tag.t-yes{background:rgba(16,185,129,.14);color:var(--green)}
+.tag.t-no,.tag.t-dis{background:rgba(239,68,68,.11);color:var(--red)}
+.tag.t-pub{background:rgba(59,130,246,.11);color:var(--sky)}
+.tag.t-aux{background:rgba(245,158,11,.11);color:var(--gold)}
+.tag.t-reg{background:rgba(16,185,129,.11);color:var(--green)}
+.tag.t-adm{background:rgba(139,92,246,.11);color:#a78bfa}
+.tag.t-pend{background:rgba(245,158,11,.11);color:var(--gold)}
+
+/* FORM FIELDS */
+.f{margin-bottom:14px}
+.f label{display:block;font-size:.78rem;font-weight:500;color:var(--text2);margin-bottom:5px}
+.f input,.f select,.f textarea{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:.87rem;transition:all var(--tr)}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(59,130,246,.14)}
+.f select option{background:var(--bg);color:var(--text)}
+.f textarea{resize:vertical;min-height:75px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:440px){.fr{grid-template-columns:1fr}}
+.tgl-wrap{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px}
+.tgl-wrap span{font-size:.86rem;color:var(--text)}
+.tgl{position:relative;width:42px;height:23px;cursor:pointer;flex-shrink:0}
+.tgl input{opacity:0;width:0;height:0}
+.ts{position:absolute;inset:0;background:var(--border);border-radius:12px;transition:all var(--tr)}
+.ts::before{content:'';position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;transition:all var(--tr)}
+.tgl input:checked+.ts{background:var(--sky)}
+.tgl input:checked+.ts::before{transform:translateX(19px)}
+
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.58);backdrop-filter:blur(4px);z-index:500;display:none;align-items:flex-end;justify-content:center}
+@media(min-width:600px){.mo{align-items:center;padding:20px}}
+.mo.active{display:flex}
+.md{background:var(--surface);border-radius:22px 22px 0 0;width:100%;max-width:520px;max-height:92vh;overflow-y:auto;padding:25px 21px;box-shadow:0 -6px 36px rgba(0,0,0,.28);animation:su .27s ease}
+@media(min-width:600px){.md{border-radius:18px;animation:fadeUp .22s ease}}
+@keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.mt{font-weight:700;font-size:1rem;color:var(--text)}
+.mc{width:30px;height:30px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text2);cursor:pointer;font-size:.95rem;transition:all var(--tr)}
+.mc:hover{background:var(--border)}
+.ma{display:flex;gap:10px;margin-top:20px}
+.ma .btn{flex:1}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--bg2);border-top:1px solid var(--border);display:flex;height:62px;padding:0 4px;backdrop-filter:blur(12px)}
+@media(min-width:768px){.bnav{display:none}}
+.bi{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--text2);font-size:.62rem;font-weight:500;transition:all var(--tr);border-radius:9px;padding:4px}
+.bi .ic{font-size:1.25rem;transition:transform var(--tr)}
+.bi.active{color:var(--sky)}
+.bi.active .ic{transform:scale(1.15)}
+.bfab{width:50px;height:50px;border-radius:50%;background:var(--sky);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.45rem;box-shadow:0 3px 14px rgba(59,130,246,.42);margin-top:-22px;transition:all var(--tr);cursor:pointer;flex-shrink:0}
+.bfab:active{transform:scale(.94)}
+
+/* TOAST */
+#tc{position:fixed;top:68px;right:13px;z-index:9000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px 15px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow-lg);font-size:.84rem;color:var(--text);animation:ti .26s ease;pointer-events:auto;max-width:310px}
+.toast.out{animation:to .26s ease forwards}
+@keyframes ti{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes to{to{opacity:0;transform:translateX(16px)}}
+
+/* CHART */
+.cw{position:relative;height:210px;margin-top:7px}
+
+/* FILTER BAR */
+.fb{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:15px;align-items:center}
+.fb .f{margin-bottom:0;flex:1;min-width:105px}
+.fb .f input,.fb .f select{font-size:.82rem;padding:8px 10px}
+
+/* EMPTY STATE */
+.es{text-align:center;padding:40px 20px;color:var(--text2)}
+.es .ei{font-size:2.6rem;margin-bottom:10px;opacity:.42}
+.es p{font-size:.86rem}
+.es strong{display:block;font-size:.97rem;color:var(--text);margin-bottom:4px}
+
+/* DROPDOWN */
+.dd{position:relative}
+.dm{position:absolute;right:0;top:calc(100%+5px);min-width:168px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden;z-index:300;display:none}
+.dm.open{display:block;animation:fadeUp .17s ease}
+.di{display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:.85rem;color:var(--text);cursor:pointer;transition:background var(--tr)}
+.di:hover{background:var(--surface2)}
+.di.danger{color:var(--red)}
+.ddiv{height:1px;background:var(--border);margin:3px 0}
+
+/* SY SELECTOR */
+.sys{display:flex;align-items:center;gap:7px;margin-bottom:16px}
+.syb{width:32px;height:32px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);font-size:.95rem;transition:all var(--tr)}
+.syb:hover{background:var(--border)}
+.syl{font-size:.86rem;font-weight:600;color:var(--text);min-width:140px;text-align:center}
+
+/* EXPORT BUTTONS */
+.er{display:flex;gap:7px;flex-wrap:wrap}
+.eb{display:flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;font-size:.78rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);color:var(--text);cursor:pointer;transition:all var(--tr)}
+.eb:hover{background:var(--border)}
+
+/* INSTALL BANNER */
+#ib{background:linear-gradient(135deg,var(--navy2),var(--navy3));color:#fff;padding:10px 16px;display:none;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.1)}
+#ib.show{display:flex}
+#ib p{font-size:.81rem;color:rgba(255,255,255,.8)}
+
+@media(max-width:380px){.sv{font-size:1.45rem}.topbar{padding:0 12px}.main{padding:14px 12px 85px}}
+</style>
+</head>
+<body>
+<div id="app-loader">
+  <div class="loader-logo">✦ Ministry Assistant</div>
+  <div class="loader-sub">Kolenchery North Congregation</div>
+  <div class="spinner"></div>
+</div>
+<div id="tc"></div>
+<div id="ib">
+  <p>📲 <strong>Install App</strong> for a native experience</p>
+  <div style="display:flex;gap:7px">
+    <button class="btn btn-primary btn-sm" onclick="installApp()">Install</button>
+    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ib').classList.remove('show')">✕</button>
+  </div>
+</div>
+
+<!--
+╔══════════════════════════════════════════════════════════════════════╗
+║         GOOGLE APPS SCRIPT BACKEND CODE  (Code.gs)                  ║
+║  1. In your Google Sheet → Extensions → Apps Script                  ║
+║  2. Replace all existing code with everything below                  ║
+║  3. Set SPREADSHEET_ID to your Google Sheet ID                       ║
+║  4. Deploy as Web App (Execute as: Me, Access: Anyone)               ║
+║  5. Copy the Web App URL into API_URL at the top of this HTML file   ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+const SPREADSHEET_ID = 'YOUR_GOOGLE_SHEET_ID_HERE';
+
+function doPost(e){
+  try{
+    const d=JSON.parse(e.postData.contents);
+    const map={registerUser,loginUser,saveReport,updateReport,deleteReport,getUserReports,getMonthlySummary,getServiceYearSummary,getDashboardData,adminGetUsers,adminUpdateUser};
+    const fn=map[d.action];
+    const res=fn?fn(d):{success:false,error:'Unknown action'};
+    return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
+  }catch(err){
+    return ContentService.createTextOutput(JSON.stringify({success:false,error:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+function doGet(){return ContentService.createTextOutput(JSON.stringify({status:'Ministry Assistant API v1 running'})).setMimeType(ContentService.MimeType.JSON);}
+function sheet(n){return SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(n);}
+function uid(){return 'ID'+Date.now()+Math.random().toString(36).substr(2,4);}
+function hashPw(p){const b=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,p);return b.map(x=>(x<0?x+256:x).toString(16).padStart(2,'0')).join('');}
+function checkPw(p,h){return hashPw(p)===h;}
+function getSY(d){const dt=d instanceof Date?d:new Date(d);return dt.getMonth()>=8?dt.getFullYear()+1:dt.getFullYear();}
+function log(uid,action,detail){try{sheet('AuditLog').appendRow(['L'+Date.now(),uid,action,new Date().toISOString(),detail]);}catch(e){}}
+function getUser(id){
+  const rows=sheet('Users').getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){if(String(rows[i][0])===String(id))return{id:rows[i][0],name:rows[i][1],email:rows[i][2],role:rows[i][4],status:rows[i][5]};}
+  return null;
+}
+function auth(token){return token?getUser(String(token).replace('demo-','').replace('token-','')):null;}
+function registerUser(d){
+  const sh=sheet('Users');const rows=sh.getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){if(rows[i][2]===d.email)return{success:false,error:'Email already registered'};}
+  if(!d.password||d.password.length<8)return{success:false,error:'Password must be at least 8 characters'};
+  const id=uid();sh.appendRow([id,d.name,d.email,hashPw(d.password),d.role||'Publisher','Pending',new Date().toISOString(),'']);
+  log(id,'Registered',d.name);return{success:true,message:'Registration submitted. Await admin approval.'};
+}
+function loginUser(d){
+  const rows=sheet('Users').getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){
+    if(rows[i][2]===d.email){
+      if(!checkPw(d.password,rows[i][3]))return{success:false,error:'Invalid password'};
+      if(rows[i][5]==='Pending')return{success:false,error:'Account awaiting admin approval'};
+      if(rows[i][5]==='Disabled')return{success:false,error:'Account disabled'};
+      sheet('Users').getRange(i+1,8).setValue(new Date().toISOString());
+      const user={id:rows[i][0],name:rows[i][1],email:rows[i][2],role:rows[i][4],status:rows[i][5]};
+      log(user.id,'Login',user.email);
+      return{success:true,user,token:'token-'+rows[i][0]};
+    }
+  }
+  return{success:false,error:'Email not found'};
+}
+function saveReport(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const id=uid();const now=new Date().toISOString();
+  sheet('DailyReports').appendRow([id,u.id,d.date,parseFloat(d.hours)||0,d.participated?'TRUE':'FALSE',parseInt(d.bibleStudies)||0,d.notes||'',now,now,d.remarks||'',parseFloat(d.hourCredit)||0,d.hcProject||'']);
+  return{success:true,report:{id,userId:u.id,date:d.date,hours:parseFloat(d.hours)||0,participated:d.participated,bibleStudies:parseInt(d.bibleStudies)||0,notes:d.notes||''}};
+}
+function updateReport(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const sh=sheet('DailyReports');const rows=sh.getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][0])===String(d.reportId)&&(String(rows[i][1])===String(u.id)||u.role==='Administrator')){
+      sh.getRange(i+1,3,1,10).setValues([[d.date,parseFloat(d.hours)||0,d.participated?'TRUE':'FALSE',parseInt(d.bibleStudies)||0,d.notes||'',rows[i][7],new Date().toISOString(),d.remarks||'',parseFloat(d.hourCredit)||0,d.hcProject||'']]);
+      return{success:true};
+    }
+  }
+  return{success:false,error:'Report not found'};
+}
+function deleteReport(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const sh=sheet('DailyReports');const rows=sh.getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][0])===String(d.reportId)&&(String(rows[i][1])===String(u.id)||u.role==='Administrator')){sh.deleteRow(i+1);return{success:true};}
+  }
+  return{success:false,error:'Not found'};
+}
+function getUserReports(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const tid=(u.role==='Administrator'&&d.userId)?d.userId:u.id;
+  const rows=sheet('DailyReports').getDataRange().getValues();
+  let rpts=[];
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][1])!==String(tid))continue;
+    const dt=new Date(rows[i][2]);
+    if(d.month&&dt.getMonth()+1!==+d.month)continue;
+    if(d.year&&dt.getFullYear()!==+d.year)continue;
+    rpts.push({id:rows[i][0],userId:rows[i][1],date:rows[i][2],hours:rows[i][3],participated:rows[i][4]==='TRUE'||rows[i][4]===true,bibleStudies:rows[i][5],notes:rows[i][6],remarks:rows[i][9]||'',hourCredit:parseFloat(rows[i][10])||0,hcProject:rows[i][11]||''});
+  }
+  rpts.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  return{success:true,reports:rpts};
+}
+function getDashboardData(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const now=new Date(),m=now.getMonth()+1,y=now.getFullYear(),sy=getSY(now),syr=sy-1;
+  const rows=sheet('DailyReports').getDataRange().getValues();
+  let mo={hours:0,days:0,bs:0},sYear={hours:0,days:0,bs:0},recent=[];
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][1])!==String(u.id))continue;
+    const dt=new Date(rows[i][2]),rm=dt.getMonth()+1,ry=dt.getFullYear();
+    const part=rows[i][4]==='TRUE'||rows[i][4]===true;
+    const hrs=parseFloat(rows[i][3])||0,bs=parseInt(rows[i][5])||0;
+    const hc=parseFloat(rows[i][10])||0;
+    if(rm===m&&ry===y){mo.hours+=hrs+hc;if(part)mo.days++;mo.bs+=bs;}
+    if((rm>=9&&ry===syr)||(rm<=8&&ry===sy)){sYear.hours+=hrs+hc;if(part)sYear.days++;sYear.bs+=bs;}
+    recent.push({date:rows[i][2],hours:hrs,participated:part,bibleStudies:bs,notes:rows[i][6]||''});
+  }
+  recent.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  return{success:true,month:{...mo,hours:+mo.hours.toFixed(1),month:m,year:y},serviceYear:{...sYear,hours:+sYear.hours.toFixed(1),sy},recentReports:recent.slice(0,5)};
+}
+function getMonthlySummary(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const y=+d.year||new Date().getFullYear(),g=u.role==='RegularPioneer'?50:u.role==='AuxiliaryPioneer'?30:0,bm={};
+  const rows=sheet('DailyReports').getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][1])!==String(u.id))continue;
+    const dt=new Date(rows[i][2]);if(dt.getFullYear()!==y)continue;
+    const m=dt.getMonth()+1;if(!bm[m])bm[m]={month:m,year:y,hours:0,days:0,bs:0};
+    const hc=parseFloat(rows[i][10])||0;
+    bm[m].hours+=(parseFloat(rows[i][3])||0)+hc;if(rows[i][4]==='TRUE'||rows[i][4]===true)bm[m].days++;bm[m].bs+=parseInt(rows[i][5])||0;bm[m].hcTotal=(bm[m].hcTotal||0)+hc;
+  }
+  const rmks=JSON.parse(localStorage.getItem('ma_mremarks')||'{}');
+  const sm=Object.values(bm).map(m=>({...m,hours:+m.hours.toFixed(1),participationDays:m.days,bibleStudies:m.bs,hourCredit:+(m.hcTotal||0).toFixed(1),goalTarget:g,goalAchieved:g===0||m.hours>=g,remarks:rmks[`${uid}-${y}-${m.month}`]||''})).sort((a,b)=>a.month-b.month);
+  return{success:true,summary:sm};
+}
+function getServiceYearSummary(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const sy=+d.serviceYear||getSY(new Date()),syr=sy-1,g=u.role==='RegularPioneer'?50:u.role==='AuxiliaryPioneer'?30:0,bm={};
+  const rows=sheet('DailyReports').getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][1])!==String(u.id))continue;
+    const dt=new Date(rows[i][2]),rm=dt.getMonth()+1,ry=dt.getFullYear();
+    if(!((rm>=9&&ry===syr)||(rm<=8&&ry===sy)))continue;
+    const k=`${ry}-${String(rm).padStart(2,'0')}`;if(!bm[k])bm[k]={month:rm,year:ry,hours:0,days:0,bs:0};
+    const hc=parseFloat(rows[i][10])||0;
+    bm[k].hours+=(parseFloat(rows[i][3])||0)+hc;if(rows[i][4]==='TRUE'||rows[i][4]===true)bm[k].days++;bm[k].bs+=parseInt(rows[i][5])||0;bm[k].hcTotal=(bm[k].hcTotal||0)+hc;
+  }
+  const ml=Object.values(bm).map(m=>({...m,hours:+m.hours.toFixed(1),participationDays:m.days,bibleStudies:m.bs,hourCredit:+(m.hcTotal||0).toFixed(1),goalTarget:g,goalAchieved:g===0||m.hours>=g}));
+  const tot=ml.reduce((a,m)=>({h:a.h+m.hours,d:a.d+m.participationDays,b:a.b+m.bibleStudies}),{h:0,d:0,b:0});
+  return{success:true,serviceYear:sy,monthly:ml,totals:{hours:+tot.h.toFixed(1),days:tot.d,bs:tot.b,avg:+(tot.h/12).toFixed(1)}};
+}
+function adminGetUsers(d){
+  const u=auth(d.token);if(!u||u.role!=='Administrator')return{success:false,error:'Unauthorized'};
+  const rows=sheet('Users').getDataRange().getValues();
+  return{success:true,users:rows.slice(1).map(r=>({id:r[0],name:r[1],email:r[2],role:r[4],status:r[5]}))};
+}
+function saveMonthlyRemark(d){
+  const u=auth(d.token);if(!u)return{success:false,error:'Unauthorized'};
+  const sh=sheet('MonthlySummary');const rows=sh.getDataRange().getValues();
+  const y=+d.year,m=+d.month;
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][1])===String(u.id)&&+rows[i][2]===m&&+rows[i][3]===y){
+      // Column 10 = Remarks (add if not exists)
+      sh.getRange(i+1,10).setValue(d.remarks||'');
+      return{success:true};
+    }
+  }
+  // Row not found — insert
+  sh.appendRow([uid()+'SR',u.id,m,y,0,0,0,0,false,d.remarks||'']);
+  return{success:true};
+}
+function adminUpdateUser(d){
+  const u=auth(d.token);if(!u||u.role!=='Administrator')return{success:false,error:'Unauthorized'};
+  const sh=sheet('Users');const rows=sh.getDataRange().getValues();
+  for(let i=1;i<rows.length;i++){
+    if(String(rows[i][0])===String(d.userId)){
+      sh.getRange(i+1,2).setValue(d.name);sh.getRange(i+1,5).setValue(d.role);sh.getRange(i+1,6).setValue(d.status);
+      log(u.id,'UserUpdated',`${d.name} role=${d.role} status=${d.status}`);return{success:true};
+    }
+  }
+  return{success:false,error:'User not found'};
+}
+
+END OF APPS SCRIPT CODE
+-->
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="active">
+  <div class="auth-card">
+    <div class="auth-logo"><h1>✦ Ministry<br>Assistant</h1><p>Field Ministry Manager</p></div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchTab('register')">Register</div>
+    </div>
+    <div id="login-form">
+      <div class="fg"><label class="fl">Email Address</label><input class="fi" type="email" id="li-email" placeholder="your@email.com" autocomplete="email"/></div>
+      <div class="fg"><label class="fl">Password</label><input class="fi" type="password" id="li-pw" placeholder="••••••••" autocomplete="current-password"/></div>
+      <div class="rem-row">
+        <label class="cb-lbl"><input type="checkbox" id="li-rem"/> Remember me</label>
+        <span class="forgot" onclick="forgotPw()">Forgot password?</span>
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">Sign In</button>
+      <div class="auth-foot">No account? <a onclick="switchTab('register')">Register here</a></div>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="frow">
+        <div class="fg"><label class="fl">Full Name</label><input class="fi" type="text" id="rg-name" placeholder="Full name"/></div>
+        <div class="fg"><label class="fl">Role</label>
+          <select class="fi" id="rg-role">
+            <option value="Publisher">Publisher</option>
+            <option value="AuxiliaryPioneer">Auxiliary Pioneer</option>
+            <option value="RegularPioneer">Regular Pioneer</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Email Address</label><input class="fi" type="email" id="rg-email" placeholder="your@email.com"/></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Password</label><input class="fi" type="password" id="rg-pw" placeholder="Min 8 chars"/></div>
+        <div class="fg"><label class="fl">Confirm</label><input class="fi" type="password" id="rg-pw2" placeholder="Repeat"/></div>
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()">Create Account</button>
+      <div class="auth-foot">Have account? <a onclick="switchTab('login')">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <header class="topbar">
+    <div class="tb-brand"><h2>✦ Ministry</h2><span class="badge" id="role-badge">Publisher</span></div>
+    <div class="tb-right">
+      <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
+      <div class="dd">
+        <div class="avatar" id="av" onclick="togDD()">?</div>
+        <div class="dm" id="udd">
+          <div class="di" onclick="showPage('profile')">👤 Profile</div>
+          <div class="ddiv"></div>
+          <div class="di danger" onclick="doLogout()">🚪 Sign Out</div>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="ni active" onclick="showPage('dashboard')" data-p="dashboard"><span class="ico">📊</span>Dashboard</div>
+      <div class="ni" onclick="showPage('reports')" data-p="reports"><span class="ico">📋</span>Daily Reports</div>
+      <div class="ni" onclick="showPage('monthly')" data-p="monthly"><span class="ico">📅</span>Monthly</div>
+      <div class="ni" onclick="showPage('sy')" data-p="sy"><span class="ico">📆</span>Service Year</div>
+      <div class="ni" onclick="showPage('charts')" data-p="charts"><span class="ico">📈</span>Charts</div>
+      <div class="nsec" id="adm-sec" style="display:none">Admin</div>
+      <div class="ni" onclick="showPage('admin')" data-p="admin" id="adm-ni" style="display:none"><span class="ico">⚙️</span>Congregation</div>
+      <div class="nsec">Data</div>
+      <div class="ni" onclick="showPage('sync')" data-p="sync"><span class="ico">🔄</span>Sync Sheet</div>
+    </nav>
+    <main class="main">
+
+      <!-- DASHBOARD PAGE -->
+      <div class="page active" id="page-dashboard">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:10px">
+          <div>
+            <div class="pt" id="dash-greet">Welcome!</div>
+            <div class="ps" id="dash-date" style="margin-bottom:0">Loading…</div>
+          </div>
+          <button onclick="openRptModal()" style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:11px 18px;background:var(--sky);color:#fff;border:none;border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(59,130,246,.4);margin-top:4px;white-space:nowrap;font-family:var(--font)">
+            <span style="font-size:1.2rem">＋</span> Add Report
+          </button>
+        </div>
+        <div style="font-size:.73rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);margin-bottom:11px;margin-top:20px">This Month</div>
+        <div class="sg">
+          <div class="sc blue"><div class="si">⏱️</div><div class="sv" id="d-mh">–</div><div class="sl">Hours</div></div>
+          <div class="sc gold"><div class="si">🤝</div><div class="sv" id="d-md">–</div><div class="sl">Participation Days</div></div>
+          <div class="sc green"><div class="si">📖</div><div class="sv" id="d-mb">–</div><div class="sl">Bible Studies</div></div>
+        </div>
+        <div class="card" id="goal-card">
+          <div class="ch">
+            <div><div class="ct">Monthly Goal Progress</div><div class="cs" id="goal-sub">–</div></div>
+            <span id="goal-tag" class="tag"></span>
+          </div>
+          <div class="pw">
+            <div class="ph"><span id="gl-left">0 hrs</span><span id="gl-right">Goal: – hrs</span></div>
+            <div class="pb"><div class="pf" id="goal-bar" style="width:0%"></div></div>
+          </div>
+          <p id="goal-rem" style="font-size:.79rem;color:var(--text2);margin-top:6px"></p>
+        </div>
+        <div style="font-size:.73rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);margin-bottom:11px;margin-top:2px">Service Year <span id="d-sy-lbl"></span></div>
+        <div class="sg">
+          <div class="sc blue"><div class="si">⏱️</div><div class="sv" id="d-syh">–</div><div class="sl">Total Hours</div></div>
+          <div class="sc gold"><div class="si">🗓️</div><div class="sv" id="d-syd">–</div><div class="sl">Days Participated</div></div>
+          <div class="sc green"><div class="si">📖</div><div class="sv" id="d-syb">–</div><div class="sl">Bible Studies</div></div>
+        </div>
+        <div class="card" id="quick-add-card">
+          <div class="ch" style="margin-bottom:14px">
+            <div class="ct">⚡ Quick Add Today's Report</div>
+          </div>
+          <div class="fr" style="margin-bottom:12px">
+            <div class="f" style="margin-bottom:0">
+              <label>Hours</label>
+              <input type="number" id="q-hrs" min="0" max="24" step="0.5" placeholder="0.0" style="text-align:center;font-size:1.1rem;font-weight:600"/>
+            </div>
+            <div class="f" style="margin-bottom:0">
+              <label>Bible Studies</label>
+              <input type="number" id="q-bs" min="0" max="50" placeholder="0" style="text-align:center;font-size:1.1rem;font-weight:600"/>
+            </div>
+          </div>
+          <div class="f" style="margin-bottom:12px">
+            <label>Date</label>
+            <input type="date" id="q-date"/>
+          </div>
+          <div class="tgl-wrap" style="margin-bottom:10px">
+            <span>Participated in ministry today?</span>
+            <label class="tgl"><input type="checkbox" id="q-part" checked/><span class="ts"></span></label>
+          </div>
+          <div class="tgl-wrap" style="margin-bottom:10px">
+            <span><strong style="font-size:.84rem">Hour Credit?</strong><br><small style="color:var(--text2);font-size:.71rem">Theocratic project time</small></span>
+            <label class="tgl"><input type="checkbox" id="q-hc-on" onchange="togQHC()"/><span class="ts"></span></label>
+          </div>
+          <div id="q-hc-wrap" style="display:none;margin-bottom:10px;padding:10px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:9px">
+            <div class="fr" style="margin-bottom:0">
+              <div class="f" style="margin-bottom:0"><label>Hour Credit</label><input type="number" id="q-hc-hrs" min="0" max="24" step="0.5" placeholder="0.0"/></div>
+              <div class="f" style="margin-bottom:0"><label>Project</label><input type="text" id="q-hc-proj" placeholder="LDC, Assembly…"/></div>
+            </div>
+          </div>
+          <div class="f" style="margin-bottom:12px"><label>Remarks (optional)</label><textarea id="q-remarks" placeholder="Any remarks…" style="min-height:50px"></textarea></div>
+          <button onclick="quickAddReport()" style="width:100%;padding:13px;background:var(--sky);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--font);box-shadow:0 3px 12px rgba(59,130,246,.35)">
+            <span style="font-size:1.1rem">💾</span> Save Report
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="ch"><div class="ct">Recent Reports</div><button class="btn btn-secondary btn-sm" onclick="showPage('reports')">View All</button></div>
+          <div id="recent-list"><div class="es"><div class="ei">📋</div><p>No recent reports yet</p></div></div>
+        </div>
+      </div>
+
+      <!-- REPORTS PAGE -->
+      <div class="page" id="page-reports">
+        <div class="pt">Daily Reports</div><div class="ps">Track your field ministry activity</div>
+        <div class="fb">
+          <div class="f" style="min-width:120px;flex:none">
+            <select id="f-month" onchange="loadReports()">
+              <option value="">All Months</option>
+              <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+              <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+              <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+          <div class="f" style="min-width:80px;flex:none"><input type="number" id="f-year" placeholder="Year" onchange="loadReports()" min="2020" max="2099"/></div>
+          <div class="f" style="flex:2;min-width:120px"><input type="text" id="f-search" placeholder="🔍 Search notes…" oninput="filterLocal()"/></div>
+          <button class="btn btn-primary btn-sm" onclick="openRptModal()">+ Add</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="tw">
+            <table><thead><tr><th>Date</th><th>Hours</th><th>Hr Credit</th><th>Participated</th><th>Studies</th><th>Notes</th><th>Remarks</th><th></th></tr></thead>
+            <tbody id="rpt-tb"><tr><td colspan="6"><div class="es"><div class="ei">📋</div><strong>No reports found</strong><p>Add your first daily report</p></div></td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MONTHLY PAGE -->
+      <div class="page" id="page-monthly">
+        <div class="pt">Monthly Summary</div><div class="ps">Review your monthly ministry activity</div>
+        <div class="fb">
+          <div class="f" style="min-width:90px;flex:none"><select id="m-year" onchange="loadMonthly()"></select></div>
+          <div class="er">
+            <button class="eb" onclick="expPDF()">🖨️ PDF</button>
+            <button class="eb" onclick="expXLS()">📊 Excel</button>
+            <button class="eb" onclick="expCSV()">📄 CSV</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="tw">
+            <table><thead><tr><th>Month</th><th>Hours</th><th>Hr Credit</th><th>Days</th><th>Bible Studies</th><th>Goal</th><th>Status</th><th>Remarks</th></tr></thead>
+            <tbody id="m-tb"><tr><td colspan="6"><div class="es"><div class="ei">📅</div><strong>No data</strong><p>Add daily reports to see monthly summaries</p></div></td></tr></tbody>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct" style="margin-bottom:13px">Year Totals</div>
+          <div class="sg">
+            <div class="sc blue"><div class="si">⏱️</div><div class="sv" id="m-th">–</div><div class="sl">Total Hours</div></div>
+            <div class="sc gold"><div class="si">🤝</div><div class="sv" id="m-td">–</div><div class="sl">Total Days</div></div>
+            <div class="sc green"><div class="si">📖</div><div class="sv" id="m-tb2">–</div><div class="sl">Bible Studies</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SERVICE YEAR PAGE -->
+      <div class="page" id="page-sy">
+        <div class="pt">Service Year</div><div class="ps">Sep 1 – Aug 31 annual ministry summary</div>
+        <div class="sys">
+          <button class="syb" onclick="chSY(-1)">◀</button>
+          <div class="syl" id="sy-lbl">Service Year 2026</div>
+          <button class="syb" onclick="chSY(1)">▶</button>
+        </div>
+        <div class="sg">
+          <div class="sc blue"><div class="si">⏱️</div><div class="sv" id="sy-h">–</div><div class="sl">Total Hours</div></div>
+          <div class="sc gold"><div class="si">🤝</div><div class="sv" id="sy-d">–</div><div class="sl">Days Participated</div></div>
+          <div class="sc green"><div class="si">📖</div><div class="sv" id="sy-b">–</div><div class="sl">Bible Studies</div></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Monthly Breakdown</div><span id="sy-avg" style="font-size:.78rem;color:var(--text2)"></span></div>
+          <div class="tw">
+            <table><thead><tr><th>Month</th><th>Hours</th><th>Hr Credit</th><th>Days</th><th>Bible Studies</th><th>Goal Met?</th></tr></thead>
+            <tbody id="sy-tb"></tbody>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS PAGE -->
+      <div class="page" id="page-charts">
+        <div class="pt">Charts &amp; Trends</div><div class="ps">Visual overview of your ministry activity</div>
+        <div class="card"><div class="ct">Monthly Hours Trend</div><div class="cw"><canvas id="ch-hours"></canvas></div></div>
+        <div class="card"><div class="ct">Bible Studies Trend</div><div class="cw"><canvas id="ch-bs"></canvas></div></div>
+        <div class="card"><div class="ct">Service Year Progress</div><div class="cw"><canvas id="ch-sy"></canvas></div></div>
+      </div>
+
+      <!-- ADMIN PAGE -->
+      <div class="page" id="page-admin">
+        <div class="pt">Congregation</div><div class="ps">Manage publishers and settings</div>
+        <div class="card">
+          <div class="ch"><div class="ct">All Publishers</div><button class="eb" onclick="expUsers()">📊 Export</button></div>
+          <div class="tw">
+            <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+            <tbody id="adm-tb"><tr><td colspan="5"><div class="es"><div class="ei">👥</div><strong>No users found</strong></div></td></tr></tbody>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ct" style="margin-bottom:13px">Congregation Statistics</div>
+          <div class="sg">
+            <div class="sc blue"><div class="si">👤</div><div class="sv" id="cg-pub">–</div><div class="sl">Publishers</div></div>
+            <div class="sc gold"><div class="si">🌟</div><div class="sv" id="cg-aux">–</div><div class="sl">Aux Pioneers</div></div>
+            <div class="sc green"><div class="si">🏆</div><div class="sv" id="cg-reg">–</div><div class="sl">Reg Pioneers</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SYNC PAGE -->
+      <div class="page" id="page-sync">
+        <div class="pt">Sync with Google Sheet</div>
+        <div class="ps">Read data from or push data to your connected Google Sheet</div>
+
+        <!-- BIG SYNC BUTTON -->
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+          <button onclick="syncReadAll()" style="flex:1;min-width:160px;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 20px;border-radius:14px;background:var(--sky);color:#fff;font-size:1rem;font-weight:700;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(59,130,246,.35);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            <span style="font-size:1.4rem">📥</span> Read from Sheet
+          </button>
+          <button onclick="syncWriteAll()" style="flex:1;min-width:160px;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 20px;border-radius:14px;background:var(--green);color:#fff;font-size:1rem;font-weight:700;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(16,185,129,.35);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+            <span style="font-size:1.4rem">📤</span> Write to Sheet
+          </button>
+        </div>
+
+        <!-- STATUS BANNER -->
+        <div id="sync-status-banner" style="display:none;margin-bottom:18px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500;align-items:center;gap:10px"></div>
+
+        <!-- READ FROM SHEET -->
+        <div class="card">
+          <div class="ch">
+            <div>
+              <div class="ct">📥 Read from Google Sheet</div>
+              <div class="cs">Pull the latest data from the sheet into the app</div>
+            </div>
+            <span id="last-read-ts" style="font-size:.74rem;color:var(--text2)"></span>
+          </div>
+          <p style="font-size:.84rem;color:var(--text2);margin-bottom:18px;line-height:1.6">
+            Fetches your reports, user data, and summaries directly from the Google Sheet. 
+            Any changes made in the sheet (e.g. by an admin) will appear in the app after reading.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <button class="btn btn-primary" style="max-width:220px" id="read-all-btn" onclick="syncReadAll()">
+              <span>📥 Read All My Data</span>
+            </button>
+            <button class="btn btn-secondary" style="max-width:220px" id="read-reports-btn" onclick="syncReadReports()">
+              <span>📋 Read Reports Only</span>
+            </button>
+          </div>
+          <!-- Read results preview -->
+          <div id="read-preview" style="display:none;margin-top:18px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:.8rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Last Read Summary</div>
+            <div class="sg" style="margin-bottom:0">
+              <div class="sc blue" style="padding:12px"><div class="si" style="font-size:1rem;margin-bottom:5px">📋</div><div class="sv" style="font-size:1.3rem" id="rp-rpts">–</div><div class="sl">Reports</div></div>
+              <div class="sc gold" style="padding:12px"><div class="si" style="font-size:1rem;margin-bottom:5px">👤</div><div class="sv" style="font-size:1.3rem" id="rp-users">–</div><div class="sl">Users</div></div>
+              <div class="sc green" style="padding:12px"><div class="si" style="font-size:1rem;margin-bottom:5px">⏱️</div><div class="sv" style="font-size:1.3rem" id="rp-hrs">–</div><div class="sl">Total Hours</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WRITE TO SHEET -->
+        <div class="card">
+          <div class="ch">
+            <div>
+              <div class="ct">📤 Write to Google Sheet</div>
+              <div class="cs">Push local data to the sheet</div>
+            </div>
+            <span id="last-write-ts" style="font-size:.74rem;color:var(--text2)"></span>
+          </div>
+          <p style="font-size:.84rem;color:var(--text2);margin-bottom:18px;line-height:1.6">
+            Saves your local reports and profile changes to the Google Sheet. 
+            Use this after adding reports while offline, or to make sure the sheet reflects your latest activity.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <button class="btn btn-primary" style="max-width:220px;background:var(--green)" id="write-all-btn" onclick="syncWriteAll()">
+              <span>📤 Write All My Reports</span>
+            </button>
+            <button class="btn btn-secondary" style="max-width:220px" id="write-profile-btn" onclick="syncWriteProfile()">
+              <span>👤 Update My Profile</span>
+            </button>
+          </div>
+          <!-- Write results preview -->
+          <div id="write-preview" style="display:none;margin-top:18px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+            <div style="font-size:.8rem;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Last Write Summary</div>
+            <div id="write-result-text" style="font-size:.86rem;color:var(--text)"></div>
+          </div>
+        </div>
+
+        <!-- ADMIN: FULL SHEET SYNC -->
+        <div class="card" id="sync-admin-card" style="display:none">
+          <div class="ch">
+            <div>
+              <div class="ct">⚙️ Admin: Full Congregation Sync</div>
+              <div class="cs">Read or write all congregation data (admin only)</div>
+            </div>
+          </div>
+          <p style="font-size:.84rem;color:var(--text2);margin-bottom:18px;line-height:1.6">
+            As an administrator you can sync all users' data at once — useful for backups or bulk updates.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px">
+            <button class="btn btn-secondary" style="max-width:230px" onclick="syncReadAllUsers()">
+              <span>📥 Read All Users from Sheet</span>
+            </button>
+            <button class="btn btn-secondary" style="max-width:230px" onclick="syncWriteAuditLog()">
+              <span>📤 Write Audit Log Entry</span>
+            </button>
+          </div>
+          <div id="admin-sync-result" style="display:none;margin-top:14px;padding:12px;background:var(--surface2);border-radius:9px;font-size:.84rem;color:var(--text)"></div>
+        </div>
+
+        <!-- SYNC LOG -->
+        <div class="card">
+          <div class="ch">
+            <div class="ct">🕒 Sync Activity Log</div>
+            <button class="eb" onclick="clearSyncLog()">Clear</button>
+          </div>
+          <div id="sync-log" style="max-height:220px;overflow-y:auto;font-size:.8rem;font-family:monospace;color:var(--text2)">
+            <div style="padding:10px;text-align:center;opacity:.5">No sync activity yet</div>
+          </div>
+        </div>
+
+        <!-- OFFLINE WARNING -->
+        <div id="offline-notice" style="display:none;padding:14px 16px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:10px;font-size:.84rem;color:var(--gold);margin-bottom:18px">
+          ⚠️ <strong>Offline / Demo Mode:</strong> The API URL is not configured. Sync buttons will operate on local storage only. 
+          Connect your Apps Script Web App URL in the <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">API_URL</code> constant at the top of this file to enable real Google Sheets sync.
+        </div>
+      </div>
+
+      <!-- PROFILE PAGE -->
+      <div class="page" id="page-profile">
+        <div class="pt">Profile</div><div class="ps">Your account details</div>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+            <div class="avatar" style="width:54px;height:54px;font-size:1.28rem;flex-shrink:0" id="prof-av">?</div>
+            <div>
+              <div style="font-weight:700;font-size:.97rem" id="prof-name">–</div>
+              <div style="font-size:.8rem;color:var(--text2)" id="prof-email">–</div>
+              <span class="tag" id="prof-role" style="margin-top:4px">–</span>
+            </div>
+          </div>
+          <div class="fr">
+            <div class="f"><label>Full Name</label><input type="text" id="pn-input"/></div>
+            <div class="f"><label>Role</label><input type="text" id="pr-input" readonly style="opacity:.5"/></div>
+          </div>
+          <div class="f"><label>Email</label><input type="email" id="pe-input" readonly style="opacity:.5"/></div>
+          <div class="f"><label>New Password (blank = keep current)</label><input type="password" id="pp-input" placeholder="••••••••"/></div>
+          <button class="btn btn-primary" style="max-width:190px" onclick="saveProfile()">Save Changes</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <nav class="bnav">
+    <div class="bi active" onclick="showPage('dashboard')" data-p="dashboard"><div class="ic">📊</div><span>Home</span></div>
+    <div class="bi" onclick="showPage('reports')" data-p="reports"><div class="ic">📋</div><span>Reports</span></div>
+    <div class="bfab" onclick="openRptModal()">＋</div>
+    <div class="bi" onclick="showPage('monthly')" data-p="monthly"><div class="ic">📅</div><span>Monthly</span></div>
+    <div class="bi" onclick="showPage('charts')" data-p="charts"><div class="ic">📈</div><span>Charts</span></div>
+  </nav>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="mo" id="rpt-modal">
+  <div class="md">
+    <div class="mh"><div class="mt" id="rpt-modal-title">Add Daily Report</div><button class="mc" onclick="closeMo('rpt-modal')">✕</button></div>
+    <input type="hidden" id="edit-id"/>
+    <div class="f"><label>Date *</label><input type="date" id="r-date"/></div>
+    <div class="fr">
+      <div class="f"><label>Hours</label><input type="number" id="r-hrs" min="0" max="24" step="0.5" placeholder="0.0"/></div>
+      <div class="f"><label>Bible Studies</label><input type="number" id="r-bs" min="0" max="50" placeholder="0"/></div>
+    </div>
+    <div class="f">
+      <label>Ministry Participation</label>
+      <div class="tgl-wrap"><span>Participated in ministry today?</span><label class="tgl"><input type="checkbox" id="r-part" checked/><span class="ts"></span></label></div>
+    </div>
+    <div class="f">
+      <div class="tgl-wrap">
+        <span><strong style="font-size:.87rem">Hour Credit</strong><br><small style="color:var(--text2);font-size:.72rem">LDC, Hospital Liaison, Assembly, COBES…</small></span>
+        <label class="tgl"><input type="checkbox" id="r-hc-on" onchange="togHC()"/><span class="ts"></span></label>
+      </div>
+    </div>
+    <div id="hc-wrap" style="display:none;padding:12px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:9px;margin-bottom:4px">
+      <div class="fr" style="margin-bottom:0">
+        <div class="f" style="margin-bottom:0"><label>Hour Credit</label><input type="number" id="r-hc-hrs" min="0" max="24" step="0.5" placeholder="0.0"/></div>
+        <div class="f" style="margin-bottom:0"><label>Project Name</label><input type="text" id="r-hc-proj" placeholder="e.g. LDC, Assembly"/></div>
+      </div>
+    </div>
+    <div class="f"><label>Notes (optional)</label><textarea id="r-notes" placeholder="Door-to-door, return visit, letter writing…"></textarea></div>
+    <div class="f"><label>Remarks</label><textarea id="r-remarks" placeholder="Any remarks for this report…" style="min-height:58px"></textarea></div>
+    <div class="ma">
+      <button class="btn btn-secondary" onclick="closeMo('rpt-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRpt()">Save Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div class="mo" id="del-modal">
+  <div class="md" style="max-width:360px">
+    <div class="mh"><div class="mt">Confirm Delete</div><button class="mc" onclick="closeMo('del-modal')">✕</button></div>
+    <p style="color:var(--text2);font-size:.86rem">Are you sure you want to delete this report? This cannot be undone.</p>
+    <div class="ma">
+      <button class="btn btn-secondary" onclick="closeMo('del-modal')">Cancel</button>
+      <button class="btn btn-danger" id="del-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN EDIT USER MODAL -->
+<div class="mo" id="adm-modal">
+  <div class="md">
+    <div class="mh"><div class="mt">Edit User</div><button class="mc" onclick="closeMo('adm-modal')">✕</button></div>
+    <input type="hidden" id="adm-uid"/>
+    <div class="f"><label>Full Name</label><input type="text" id="adm-name"/></div>
+    <div class="fr">
+      <div class="f"><label>Role</label>
+        <select id="adm-role">
+          <option value="Publisher">Publisher</option>
+          <option value="AuxiliaryPioneer">Auxiliary Pioneer</option>
+          <option value="RegularPioneer">Regular Pioneer</option>
+          <option value="Administrator">Administrator</option>
+        </select>
+      </div>
+      <div class="f"><label>Status</label>
+        <select id="adm-status">
+          <option value="Active">Active</option>
+          <option value="Pending">Pending</option>
+          <option value="Disabled">Disabled</option>
+        </select>
+      </div>
+    </div>
+    <div class="ma">
+      <button class="btn btn-secondary" onclick="closeMo('adm-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="admSave()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CONFIGURATION: Replace the URL below with your            ║
+// ║  Google Apps Script Web App URL.                           ║
+// ║  Leave as-is to use offline/demo mode with localStorage.   ║
+// ╚══════════════════════════════════════════════════════════════╝
+const API_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+// ── STATE ────────────────────────────────────────────────────
+let CU = null; // current user
+let allRpts = [];
+let chHrs = null, chBS = null, chartSY = null;
+let curSY = syOf(new Date());
+let dPrm = null; // deferred install prompt
+
+// ── CONSTANTS ────────────────────────────────────────────────
+const MN = ['January','February','March','April','May','June',
+             'July','August','September','October','November','December'];
+const MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function syOf(d){return d.getMonth()>=8?d.getFullYear()+1:d.getFullYear();}
+function syRange(sy){return{sy,s:sy-1,e:sy};}
+function fmtD(s){if(!s)return'–';const d=new Date(s+'T00:00:00');return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function sh(s){let h=0;for(let i=0;i<s.length;i++){h=(Math.imul(31,h)+s.charCodeAt(i))|0;}return'H'+Math.abs(h).toString(16).padStart(8,'0');}
+function fmtRole(r){return r==='AuxiliaryPioneer'?'Aux Pioneer':r==='RegularPioneer'?'Reg Pioneer':r;}
+function goal(r){return r==='RegularPioneer'?50:r==='AuxiliaryPioneer'?30:0;}
+
+// ── API ──────────────────────────────────────────────────────
+async function api(payload){
+  if(API_URL==='YOUR_APPS_SCRIPT_URL_HERE')return mock(payload);
+  try{
+    const r=await fetch(API_URL,{method:'POST',body:JSON.stringify({...payload,token:CU?.token||''}),headers:{'Content-Type':'text/plain;charset=utf-8'}});
+    return await r.json();
+  }catch(e){return{success:false,error:'Network error — check your Apps Script URL'};}
+}
+
+// ── MOCK / OFFLINE MODE ──────────────────────────────────────
+function gs(){return JSON.parse(localStorage.getItem('ma_db')||'{"users":[],"reports":[]}')}
+function ss(s){localStorage.setItem('ma_db',JSON.stringify(s))}
+
+function mock(p){
+  const db=gs(),a=p.action;
+  if(a==='registerUser'){
+    if(db.users.find(u=>u.email===p.email))return{success:false,error:'Email already registered'};
+    if(!p.password||p.password.length<8)return{success:false,error:'Password must be at least 8 characters'};
+    const u={id:'U'+Date.now(),name:p.name,email:p.email,hash:sh(p.password),role:p.role||'Publisher',status:'Pending',cd:today(),ll:''};
+    db.users.push(u);ss(db);return{success:true,message:'Registration submitted. Await admin approval.'};
+  }
+  if(a==='loginUser'){
+    const u=db.users.find(u=>u.email===p.email);
+    if(!u||u.hash!==sh(p.password))return{success:false,error:'Invalid email or password'};
+    if(u.status==='Pending')return{success:false,error:'Account awaiting admin approval'};
+    if(u.status==='Disabled')return{success:false,error:'Account has been disabled'};
+    u.ll=new Date().toISOString();ss(db);
+    return{success:true,user:{id:u.id,name:u.name,email:u.email,role:u.role,status:u.status,token:'demo-'+u.id}};
+  }
+  if(a==='saveReport'){
+    const r={id:'R'+Date.now(),uid:CU.id,date:p.date,hrs:parseFloat(p.hours)||0,part:!!p.participated,bs:parseInt(p.bibleStudies)||0,notes:p.notes||'',remarks:p.remarks||'',hourCredit:parseFloat(p.hourCredit)||0,hcProject:p.hcProject||'',cd:today()};
+    db.reports.push(r);ss(db);return{success:true,report:r};
+  }
+  if(a==='updateReport'){
+    const i=db.reports.findIndex(r=>r.id===p.reportId&&(r.uid===CU.id||CU.role==='Administrator'));
+    if(i<0)return{success:false,error:'Report not found'};
+    Object.assign(db.reports[i],{date:p.date,hrs:parseFloat(p.hours)||0,part:!!p.participated,bs:parseInt(p.bibleStudies)||0,notes:p.notes||'',remarks:p.remarks||'',hourCredit:parseFloat(p.hourCredit)||0,hcProject:p.hcProject||''});
+    ss(db);return{success:true};
+  }
+  if(a==='deleteReport'){
+    db.reports=db.reports.filter(r=>!(r.id===p.reportId&&(r.uid===CU.id||CU.role==='Administrator')));
+    ss(db);return{success:true};
+  }
+  if(a==='getUserReports'){
+    const tid=CU.role==='Administrator'&&p.userId?p.userId:CU.id;
+    let rs=db.reports.filter(r=>r.uid===tid);
+    if(p.month)rs=rs.filter(r=>new Date(r.date+'T00:00:00').getMonth()+1===+p.month);
+    if(p.year)rs=rs.filter(r=>new Date(r.date+'T00:00:00').getFullYear()===+p.year);
+    rs.sort((a,b)=>b.date.localeCompare(a.date));
+    return{success:true,reports:rs.map(r=>({id:r.id,userId:r.uid,date:r.date,hours:r.hrs,participated:r.part,bibleStudies:r.bs,notes:r.notes,remarks:r.remarks||'',hourCredit:r.hourCredit||0,hcProject:r.hcProject||''}))};
+  }
+  if(a==='getDashboardData'){
+    const now=new Date(),m=now.getMonth()+1,y=now.getFullYear(),sy=syOf(now),sr=syRange(sy);
+    const uid=CU.id;
+    const sum=(arr)=>arr.reduce((a,r)=>({h:a.h+(r.hrs||0)+(r.hourCredit||0),d:a.d+(r.part?1:0),b:a.b+(r.bs||0)}),{h:0,d:0,b:0});
+    const mRpts=db.reports.filter(r=>{const d=new Date(r.date+'T00:00:00');return r.uid===uid&&d.getMonth()+1===m&&d.getFullYear()===y;});
+    const syRpts=db.reports.filter(r=>{const d=new Date(r.date+'T00:00:00'),rm=d.getMonth()+1,ry=d.getFullYear();return r.uid===uid&&((rm>=9&&ry===sr.s)||(rm<=8&&ry===sr.e));});
+    const recent=db.reports.filter(r=>r.uid===uid).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5)
+      .map(r=>({date:r.date,hours:r.hrs,participated:r.part,bibleStudies:r.bs,notes:r.notes,remarks:r.remarks||'',hourCredit:r.hourCredit||0,hcProject:r.hcProject||''}));
+    const ms=sum(mRpts),ss2=sum(syRpts);
+    return{success:true,month:{hours:ms.h,days:ms.d,bs:ms.b,month:m,year:y},serviceYear:{hours:ss2.h,days:ss2.d,bs:ss2.b,sy},recentReports:recent};
+  }
+  if(a==='getMonthlySummary'){
+    const y=+p.year||new Date().getFullYear(),uid=CU.id,g=goal(CU.role),bm={};
+    db.reports.filter(r=>r.uid===uid).forEach(r=>{
+      const d=new Date(r.date+'T00:00:00');if(d.getFullYear()!==y)return;
+      const m=d.getMonth()+1;if(!bm[m])bm[m]={month:m,year:y,hours:0,days:0,bs:0};
+      bm[m].hours+=(r.hrs||0)+(r.hourCredit||0);if(r.part)bm[m].days++;bm[m].bs+=r.bs||0;bm[m].hcTotal=(bm[m].hcTotal||0)+(r.hourCredit||0);
+    });
+    const sm=Object.values(bm).map(m=>({...m,hours:+m.hours.toFixed(1),participationDays:m.days,bibleStudies:m.bs,hourCredit:+(m.hcTotal||0).toFixed(1),goalTarget:g,goalAchieved:g===0||m.hours>=g})).sort((a,b)=>a.month-b.month);
+    return{success:true,summary:sm};
+  }
+  if(a==='getServiceYearSummary'){
+    const sy=+p.serviceYear||syOf(new Date()),sr=syRange(sy),uid=CU.id,g=goal(CU.role),bm={};
+    db.reports.filter(r=>r.uid===uid).forEach(r=>{
+      const d=new Date(r.date+'T00:00:00'),rm=d.getMonth()+1,ry=d.getFullYear();
+      if(!((rm>=9&&ry===sr.s)||(rm<=8&&ry===sr.e)))return;
+      const k=`${ry}-${String(rm).padStart(2,'0')}`;
+      if(!bm[k])bm[k]={month:rm,year:ry,hours:0,days:0,bs:0,hcTotal:0};
+      bm[k].hours+=(r.hrs||0)+(r.hourCredit||0);if(r.part)bm[k].days++;bm[k].bs+=r.bs||0;bm[k].hcTotal+=(r.hourCredit||0);
+    });
+    const ml=Object.values(bm).map(m=>({...m,hours:+m.hours.toFixed(1),participationDays:m.days,bibleStudies:m.bs,hourCredit:+(m.hcTotal||0).toFixed(1),goalTarget:g,goalAchieved:g===0||m.hours>=g}));
+    const tot=ml.reduce((a,m)=>({h:a.h+m.hours,d:a.d+m.participationDays,b:a.b+m.bibleStudies}),{h:0,d:0,b:0});
+    return{success:true,serviceYear:sy,monthly:ml,totals:{hours:+tot.h.toFixed(1),days:tot.d,bs:tot.b,avg:+(tot.h/12).toFixed(1)}};
+  }
+  if(a==='adminGetUsers'){
+    if(CU.role!=='Administrator')return{success:false,error:'Unauthorized'};
+    return{success:true,users:db.users.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,status:u.status}))};
+  }
+  if(a==='adminUpdateUser'){
+    if(CU.role!=='Administrator')return{success:false,error:'Unauthorized'};
+    const i=db.users.findIndex(u=>u.id===p.userId);if(i<0)return{success:false,error:'User not found'};
+    Object.assign(db.users[i],{name:p.name,role:p.role,status:p.status});ss(db);return{success:true};
+  }
+  return{success:false,error:'Unknown action'};
+}
+
+// ── AUTH ─────────────────────────────────────────────────────
+function switchTab(t){
+  document.querySelectorAll('.auth-tab').forEach((x,i)=>x.classList.toggle('active',i===(t==='login'?0:1)));
+  document.getElementById('login-form').style.display=t==='login'?'':'none';
+  document.getElementById('register-form').style.display=t==='register'?'':'none';
+}
+async function doLogin(){
+  const em=document.getElementById('li-email').value.trim(),pw=document.getElementById('li-pw').value,rem=document.getElementById('li-rem').checked;
+  if(!em||!pw){toast('error','Please enter email and password');return;}
+  const r=await api({action:'loginUser',email:em,password:pw});
+  if(!r.success){toast('error',r.error||'Login failed');return;}
+  CU=r.user;
+  const s=JSON.stringify({user:r.user});
+  if(rem)localStorage.setItem('ma_sess',s);else sessionStorage.setItem('ma_sess',s);
+  boot();
+}
+async function doRegister(){
+  const name=document.getElementById('rg-name').value.trim(),em=document.getElementById('rg-email').value.trim(),
+    pw=document.getElementById('rg-pw').value,pw2=document.getElementById('rg-pw2').value,role=document.getElementById('rg-role').value;
+  if(!name||!em||!pw){toast('error','All fields required');return;}
+  if(pw.length<8){toast('error','Password must be at least 8 characters');return;}
+  if(pw!==pw2){toast('error','Passwords do not match');return;}
+  const r=await api({action:'registerUser',name,email:em,password:pw,role});
+  if(!r.success){toast('error',r.error||'Registration failed');return;}
+  toast('success',r.message||'Registered! Await admin approval.');
+  switchTab('login');
+}
+function forgotPw(){toast('info','Contact your congregation administrator to reset your password.');}
+function doLogout(){
+  CU=null;localStorage.removeItem('ma_sess');sessionStorage.removeItem('ma_sess');
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('auth-screen').classList.add('active');
+  document.getElementById('li-email').value='';document.getElementById('li-pw').value='';
+  closeDD();
+}
+
+// ── BOOT APP ─────────────────────────────────────────────────
+function boot(){
+  document.getElementById('auth-screen').classList.remove('active');
+  document.getElementById('app').classList.add('active');
+  const ini=CU.name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  ['av','prof-av'].forEach(id=>document.getElementById(id).textContent=ini);
+  document.getElementById('role-badge').textContent=fmtRole(CU.role);
+  document.getElementById('prof-name').textContent=CU.name;
+  document.getElementById('prof-email').textContent=CU.email;
+  document.getElementById('pn-input').value=CU.name;
+  document.getElementById('pr-input').value=fmtRole(CU.role);
+  document.getElementById('pe-input').value=CU.email;
+  document.getElementById('prof-role').textContent=fmtRole(CU.role);
+  document.getElementById('prof-role').className='tag t-'+CU.role.toLowerCase().replace('pioneer','').replace('auxiliary','aux').replace('regular','reg')||'pub';
+  if(CU.role==='Administrator'){document.getElementById('adm-sec').style.display='';document.getElementById('adm-ni').style.display='';}
+  const now=new Date(),hr=now.getHours();
+  document.getElementById('dash-greet').textContent=(hr<12?'Good morning':hr<17?'Good afternoon':'Good evening')+', '+CU.name.split(' ')[0]+'!';
+  document.getElementById('dash-date').textContent=now.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('d-sy-lbl').textContent=syOf(now);
+  populateYears();curSY=syOf(now);updSYLbl();
+  const qdate=document.getElementById('q-date');if(qdate)qdate.value=today();
+  loadDash();loadReports();initCharts();
+}
+
+function populateYears(){
+  const sel=document.getElementById('m-year');sel.innerHTML='';
+  const y=new Date().getFullYear();
+  for(let i=y-4;i<=y+1;i++){const o=document.createElement('option');o.value=i;o.textContent=i;if(i===y)o.selected=true;sel.appendChild(o);}
+  document.getElementById('f-year').value=y;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+async function loadDash(){
+  const r=await api({action:'getDashboardData'});
+  if(!r.success){toast('error','Could not load dashboard');return;}
+  const{month:m,serviceYear:sy,recentReports:rr}=r;
+  document.getElementById('d-mh').textContent=+(m.hours||0).toFixed(1);
+  document.getElementById('d-md').textContent=m.days||0;
+  document.getElementById('d-mb').textContent=m.bs||0;
+  const g=goal(CU.role);
+  if(g>0){
+    const pct=Math.min(100,Math.round(((m.hours||0)/g)*100));
+    const bar=document.getElementById('goal-bar');
+    bar.style.width=pct+'%';bar.className='pf '+(pct>=100?'gm':pct>=50?'hw':'');
+    document.getElementById('gl-left').textContent=+(m.hours||0).toFixed(1)+' hrs';
+    document.getElementById('gl-right').textContent='Goal: '+g+' hrs';
+    document.getElementById('goal-sub').textContent=MN[new Date().getMonth()]+' '+new Date().getFullYear()+' · '+pct+'% complete';
+    document.getElementById('goal-rem').textContent=pct>=100?'🎉 Monthly goal achieved!':'⏳ '+Math.max(0,g-(m.hours||0)).toFixed(1)+' hrs remaining to reach your goal';
+    document.getElementById('goal-tag').textContent=pct>=100?'✅ Achieved':'In Progress';
+    document.getElementById('goal-tag').className='tag '+(pct>=100?'t-ok':'t-pend');
+  }else{document.getElementById('goal-card').style.display='none';}
+  document.getElementById('d-syh').textContent=+(sy.hours||0).toFixed(1);
+  document.getElementById('d-syd').textContent=sy.days||0;
+  document.getElementById('d-syb').textContent=sy.bs||0;
+  renderRecent(rr||[]);
+}
+
+function renderRecent(rpts){
+  const el=document.getElementById('recent-list');
+  if(!rpts.length){el.innerHTML='<div class="es"><div class="ei">📋</div><p>No reports yet. Tap <strong>+</strong> to add your first one!</p></div>';return;}
+  el.innerHTML=rpts.map(r=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><div><div style="font-weight:600;font-size:.86rem">${fmtD(r.date)}</div><div style="font-size:.74rem;color:var(--text2);margin-top:2px">${r.participated?'✅ Participated':'–'} · ${r.hours||0}h · ${r.bibleStudies||0} studies</div></div>${r.notes?`<div style="font-size:.72rem;color:var(--text2);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.notes}</div>`:''}</div>`).join('');
+}
+
+// ── REPORTS ──────────────────────────────────────────────────
+async function loadReports(){
+  const mo=document.getElementById('f-month').value,yr=document.getElementById('f-year').value;
+  const r=await api({action:'getUserReports',month:mo||'',year:yr||''});
+  if(!r.success){toast('error','Could not load reports');return;}
+  allRpts=r.reports||[];filterLocal();
+}
+function filterLocal(){
+  const q=document.getElementById('f-search').value.toLowerCase();
+  renderRpts(q?allRpts.filter(r=>(r.notes||'').toLowerCase().includes(q)):allRpts);
+}
+function renderRpts(rpts){
+  const tb=document.getElementById('rpt-tb');
+  if(!rpts.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">📋</div><strong>No reports found</strong><p>Adjust filters or add a new report</p></div></td></tr>';return;}
+  tb.innerHTML=rpts.map(r=>{
+    const hc=parseFloat(r.hourCredit)||0;
+    const totalH=(parseFloat(r.hours)||0)+hc;
+    const hcTag=hc>0?`<span class="tag t-aux" title="${r.hcProject||'Theocratic project'}">${hc}h${r.hcProject?' · '+r.hcProject:''}</span>`:'–';
+    return`<tr>
+      <td><strong>${fmtD(r.date)}</strong></td>
+      <td><b>${totalH%1===0?totalH:totalH.toFixed(1)}</b>${hc>0?`<br><span style="font-size:.69rem;color:var(--text2)">${r.hours||0}+${hc}cr</span>`:''}</td>
+      <td>${hcTag}</td>
+      <td><span class="tag ${r.participated?'t-yes':'t-no'}">${r.participated?'Yes':'No'}</span></td>
+      <td>${r.bibleStudies||0}</td>
+      <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)">${r.notes||'–'}</td>
+      <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic;color:var(--text2)">${r.remarks||'–'}</td>
+      <td><div style="display:flex;gap:4px">
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="editRpt('${r.id}')" title="Edit">✏️</button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="confirmDel('${r.id}')" title="Delete">🗑️</button>
+      </div></td></tr>`;
+  }).join('');
+}
+function togHC(){
+  const on=document.getElementById('r-hc-on').checked;
+  document.getElementById('hc-wrap').style.display=on?'block':'none';
+}
+function togQHC(){
+  const on=document.getElementById('q-hc-on').checked;
+  document.getElementById('q-hc-wrap').style.display=on?'block':'none';
+}
+function openRptModal(){
+  document.getElementById('edit-id').value='';
+  document.getElementById('rpt-modal-title').textContent='Add Daily Report';
+  document.getElementById('r-date').value=today();
+  document.getElementById('r-hrs').value='';
+  document.getElementById('r-bs').value='';
+  document.getElementById('r-part').checked=true;
+  document.getElementById('r-notes').value='';
+  document.getElementById('r-remarks').value='';
+  document.getElementById('r-hc-on').checked=false;
+  document.getElementById('r-hc-hrs').value='';
+  document.getElementById('r-hc-proj').value='';
+  document.getElementById('hc-wrap').style.display='none';
+  openMo('rpt-modal');
+}
+
+async function quickAddReport(){
+  const date=document.getElementById('q-date').value||today();
+  const hrs=document.getElementById('q-hrs').value||0;
+  const bs=document.getElementById('q-bs').value||0;
+  const part=document.getElementById('q-part').checked;
+  if(!date){toast('error','Please select a date');return;}
+  const remarks=document.getElementById('q-remarks').value.trim();
+  const qhcOn=document.getElementById('q-hc-on').checked;
+  const hcHrs=qhcOn?parseFloat(document.getElementById('q-hc-hrs').value||0):0;
+  const hcProj=qhcOn?document.getElementById('q-hc-proj').value.trim():'';
+  const btn=document.querySelector('#quick-add-card button');
+  const orig=btn.innerHTML;
+  btn.disabled=true;
+  btn.innerHTML='<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite"></span> Saving…';
+  const res=await api({action:'saveReport',date,hours:hrs,participated:part,bibleStudies:bs,notes:'',remarks,hourCredit:hcHrs,hcProject:hcProj});
+  btn.disabled=false;btn.innerHTML=orig;
+  if(!res.success){toast('error',res.error||'Could not save');return;}
+  document.getElementById('q-hrs').value='';
+  document.getElementById('q-bs').value='';
+  document.getElementById('q-part').checked=true;
+  document.getElementById('q-date').value=today();
+  document.getElementById('q-remarks').value='';
+  document.getElementById('q-hc-on').checked=false;
+  document.getElementById('q-hc-hrs').value='';
+  document.getElementById('q-hc-proj').value='';
+  document.getElementById('q-hc-wrap').style.display='none';
+  toast('success','Report saved for '+fmtD(date)+(hcHrs>0?' (+'+hcHrs+'h credit)':''));
+  loadDash();loadReports();
+}
+function editRpt(id){
+  const r=allRpts.find(r=>r.id===id);if(!r)return;
+  document.getElementById('edit-id').value=r.id;
+  document.getElementById('rpt-modal-title').textContent='Edit Report';
+  document.getElementById('r-date').value=r.date;document.getElementById('r-hrs').value=r.hours||'';
+  document.getElementById('r-bs').value=r.bibleStudies||'';document.getElementById('r-part').checked=!!r.participated;
+  document.getElementById('r-notes').value=r.notes||'';
+  document.getElementById('r-remarks').value=r.remarks||'';
+  const hasHC=parseFloat(r.hourCredit||0)>0;
+  document.getElementById('r-hc-on').checked=hasHC;
+  document.getElementById('r-hc-hrs').value=r.hourCredit||'';
+  document.getElementById('r-hc-proj').value=r.hcProject||'';
+  document.getElementById('hc-wrap').style.display=hasHC?'block':'none';
+  openMo('rpt-modal');
+}
+async function saveRpt(){
+  const id=document.getElementById('edit-id').value,dt=document.getElementById('r-date').value;
+  if(!dt){toast('error','Please select a date');return;}
+  const hcOn=document.getElementById('r-hc-on').checked;
+  const pl={date:dt,hours:document.getElementById('r-hrs').value||0,participated:document.getElementById('r-part').checked,bibleStudies:document.getElementById('r-bs').value||0,notes:document.getElementById('r-notes').value.trim(),remarks:document.getElementById('r-remarks').value.trim(),hourCredit:hcOn?parseFloat(document.getElementById('r-hc-hrs').value||0):0,hcProject:hcOn?document.getElementById('r-hc-proj').value.trim():''};
+  const r=await api(id?{action:'updateReport',reportId:id,...pl}:{action:'saveReport',...pl});
+  if(!r.success){toast('error',r.error||'Could not save');return;}
+  closeMo('rpt-modal');toast('success',id?'Report updated':'Report saved');loadReports();loadDash();
+}
+function confirmDel(id){document.getElementById('del-btn').onclick=()=>doDelete(id);openMo('del-modal');}
+async function doDelete(id){
+  const r=await api({action:'deleteReport',reportId:id});
+  if(!r.success){toast('error',r.error||'Could not delete');return;}
+  closeMo('del-modal');toast('success','Report deleted');loadReports();loadDash();
+}
+
+// ── MONTHLY ──────────────────────────────────────────────────
+function saveMonthlyRemark(month,year,text){
+  const key=CU.id+'-'+year+'-'+month;
+  const all=JSON.parse(localStorage.getItem('ma_mremarks')||'{}');
+  all[key]=text;
+  localStorage.setItem('ma_mremarks',JSON.stringify(all));
+  if(API_URL!=='YOUR_APPS_SCRIPT_URL_HERE'){api({action:'saveMonthlyRemark',month,year,remarks:text}).catch(()=>{});}
+  toast('success','Remark saved');
+}
+async function loadMonthly(){
+  const y=document.getElementById('m-year').value;
+  const r=await api({action:'getMonthlySummary',year:y});
+  if(!r.success){toast('error','Could not load monthly data');return;}
+  const sm=r.summary||[];
+  const tb=document.getElementById('m-tb');
+  if(!sm.length){tb.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">📅</div><strong>No data for this year</strong></div></td></tr>';}
+  else{tb.innerHTML=sm.map(m=>{
+    const hc=parseFloat(m.hourCredit)||0;
+    const rmk=(m.remarks||'').replace(/"/g,'&quot;');
+    return`<tr>
+      <td><strong>${MN[m.month-1]}</strong></td>
+      <td><b>${m.hours||0}</b></td>
+      <td>${hc>0?`<span class="tag t-aux">${hc}h</span>`:'–'}</td>
+      <td>${m.participationDays||0}</td>
+      <td>${m.bibleStudies||0}</td>
+      <td>${m.goalTarget||0}</td>
+      <td><span class="tag ${m.goalAchieved?'t-ok':m.goalTarget===0?'t-pub':'t-no'}">${m.goalTarget===0?'N/A':m.goalAchieved?'✅ Achieved':'Not Met'}</span></td>
+      <td><input type="text" value="${rmk}" placeholder="Add remarks…"
+        style="width:100%;padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.76rem"
+        onblur="saveMonthlyRemark(${m.month},${m.year},this.value)"/></td>
+    </tr>`;
+  }).join('');}
+  const tot=sm.reduce((a,m)=>({h:a.h+(m.hours||0),d:a.d+(m.participationDays||0),b:a.b+(m.bibleStudies||0)}),{h:0,d:0,b:0});
+  document.getElementById('m-th').textContent=tot.h.toFixed(1);
+  document.getElementById('m-td').textContent=tot.d;
+  document.getElementById('m-tb2').textContent=tot.b;
+}
+
+// ── SERVICE YEAR ─────────────────────────────────────────────
+function updSYLbl(){const sr=syRange(curSY);document.getElementById('sy-lbl').textContent=`Service Year ${curSY} (Sep ${sr.s} – Aug ${sr.e})`;}
+function chSY(d){curSY+=d;updSYLbl();loadSY();}
+async function loadSY(){
+  const r=await api({action:'getServiceYearSummary',serviceYear:curSY});
+  if(!r.success){toast('error','Could not load service year data');return;}
+  const{totals:t,monthly:ml}=r;
+  document.getElementById('sy-h').textContent=(t?.hours||0).toFixed(1);
+  document.getElementById('sy-d').textContent=t?.days||0;
+  document.getElementById('sy-b').textContent=t?.bs||0;
+  document.getElementById('sy-avg').textContent=`Avg: ${(t?.avg||0).toFixed(1)} hrs/month`;
+  const sr=syRange(curSY),sm=[9,10,11,12,1,2,3,4,5,6,7,8];
+  const tb=document.getElementById('sy-tb');
+  if(!(ml||[]).length){tb.innerHTML='<tr><td colspan="5"><div class="es"><div class="ei">📆</div><p>No data for this service year</p></div></td></tr>';}
+  else{
+    tb.innerHTML=sm.map(m=>{
+      const y=m>=9?sr.s:sr.e;
+      const d=(ml||[]).find(x=>x.month===m&&x.year===y)||{hours:0,hourCredit:0,participationDays:0,bibleStudies:0,goalTarget:0,goalAchieved:false};
+      const hc=parseFloat(d.hourCredit)||0;
+      return`<tr><td>${MN[m-1]} ${y}</td><td><b>${d.hours||0}</b></td><td>${hc>0?'<span class=\'tag t-aux\'>'+hc+'h</span>':'–'}</td><td>${d.participationDays||0}</td><td>${d.bibleStudies||0}</td><td><span class="tag ${d.goalAchieved?'t-ok':d.goalTarget===0?'t-pub':'t-no'}">${d.goalTarget===0?'N/A':d.goalAchieved?'✅':'–'}</span></td></tr>`;
+    }).join('');
+  }
+  updCharts(ml||[],sr);
+}
+
+// ── CHARTS ───────────────────────────────────────────────────
+function initCharts(){
+  Chart.defaults.font.family="'DM Sans',sans-serif";
+  const gc='rgba(255,255,255,.05)';
+  const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e2d45',titleColor:'#e8f0fe',bodyColor:'#94a3b8',padding:9,cornerRadius:8}},scales:{x:{grid:{color:gc},ticks:{font:{size:10}}},y:{grid:{color:gc},beginAtZero:true,ticks:{font:{size:10}}}}};
+  chHrs=new Chart(document.getElementById('ch-hours'),{type:'line',data:{labels:[],datasets:[{label:'Hours',data:[],backgroundColor:'rgba(59,130,246,.14)',borderColor:'#3b82f6',pointBackgroundColor:'#3b82f6',tension:.4,fill:true}]},options:opts});
+  chBS=new Chart(document.getElementById('ch-bs'),{type:'bar',data:{labels:[],datasets:[{label:'Studies',data:[],backgroundColor:'rgba(245,158,11,.18)',borderColor:'#f59e0b'}]},options:opts});
+  chartSY=new Chart(document.getElementById('ch-sy'),{type:'bar',data:{labels:[],datasets:[{label:'Hours',data:[],backgroundColor:'rgba(16,185,129,.18)',borderColor:'#10b981'}]},options:opts});
+  loadSY();
+}
+function updCharts(ml,sr){
+  const sm=[9,10,11,12,1,2,3,4,5,6,7,8];
+  const lbls=sm.map(m=>`${MS[m-1]} ${m>=9?sr.s:sr.e}`);
+  const hrs=sm.map(m=>{const d=ml.find(x=>x.month===m);return d?d.hours:0;});
+  const bs=sm.map(m=>{const d=ml.find(x=>x.month===m);return d?d.bibleStudies:0;});
+  [chHrs,chartSY].forEach(c=>{if(c){c.data.labels=lbls;c.data.datasets[0].data=hrs;c.update();}});
+  if(chBS){chBS.data.labels=lbls;chBS.data.datasets[0].data=bs;chBS.update();}
+}
+
+// ── ADMIN ────────────────────────────────────────────────────
+async function loadAdmin(){
+  const r=await api({action:'adminGetUsers'});
+  if(!r.success){toast('error',r.error||'Unauthorized');return;}
+  const users=r.users||[];
+  const tb=document.getElementById('adm-tb');
+  if(!users.length){tb.innerHTML='<tr><td colspan="5"><div class="es"><div class="ei">👥</div><strong>No users found</strong></div></td></tr>';return;}
+  const roleClass=(r)=>r==='AuxiliaryPioneer'?'t-aux':r==='RegularPioneer'?'t-reg':r==='Administrator'?'t-adm':'t-pub';
+  const stClass=(s)=>s==='Active'?'t-ok':s==='Disabled'?'t-dis':'t-pend';
+  tb.innerHTML=users.map(u=>`<tr><td><strong>${u.name}</strong></td><td style="font-size:.78rem;color:var(--text2)">${u.email}</td><td><span class="tag ${roleClass(u.role)}">${fmtRole(u.role)}</span></td><td><span class="tag ${stClass(u.status||'Pending')}">${u.status||'Pending'}</span></td><td><button class="btn btn-secondary btn-sm" onclick="openAdmEdit('${u.id}','${encodeURIComponent(u.name)}','${u.role}','${u.status||'Pending'}')">Edit</button></td></tr>`).join('');
+  document.getElementById('cg-pub').textContent=users.filter(u=>u.role==='Publisher'&&u.status==='Active').length;
+  document.getElementById('cg-aux').textContent=users.filter(u=>u.role==='AuxiliaryPioneer'&&u.status==='Active').length;
+  document.getElementById('cg-reg').textContent=users.filter(u=>u.role==='RegularPioneer'&&u.status==='Active').length;
+}
+function openAdmEdit(id,name,role,status){
+  document.getElementById('adm-uid').value=id;
+  document.getElementById('adm-name').value=decodeURIComponent(name);
+  document.getElementById('adm-role').value=role;
+  document.getElementById('adm-status').value=status;
+  openMo('adm-modal');
+}
+async function admSave(){
+  const r=await api({action:'adminUpdateUser',userId:document.getElementById('adm-uid').value,name:document.getElementById('adm-name').value,role:document.getElementById('adm-role').value,status:document.getElementById('adm-status').value});
+  if(!r.success){toast('error',r.error||'Could not update');return;}
+  closeMo('adm-modal');toast('success','User updated');loadAdmin();
+}
+
+// ── PROFILE ──────────────────────────────────────────────────
+async function saveProfile(){
+  const name=document.getElementById('pn-input').value.trim(),pw=document.getElementById('pp-input').value;
+  if(!name){toast('error','Name cannot be empty');return;}
+  if(pw&&pw.length<8){toast('error','Password must be at least 8 characters');return;}
+  CU.name=name;
+  const ini=name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+  ['av','prof-av'].forEach(id=>document.getElementById(id).textContent=ini);
+  document.getElementById('prof-name').textContent=name;
+  toast('success','Profile updated');
+}
+
+// ── EXPORT ───────────────────────────────────────────────────
+async function expXLS(){
+  const y=document.getElementById('m-year').value;
+  const r=await api({action:'getMonthlySummary',year:y});if(!r.success)return;
+  const data=[['Month','Hours','Days Participated','Bible Studies','Goal Target','Goal Achieved'],
+    ...(r.summary||[]).map(m=>[MN[m.month-1]+' '+y,m.hours,m.participationDays,m.bibleStudies,m.goalTarget,m.goalAchieved?'Yes':'No'])];
+  const ws=XLSX.utils.aoa_to_sheet(data);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Monthly');XLSX.writeFile(wb,`Ministry_${CU.name.replace(/\s/g,'_')}_${y}.xlsx`);
+  toast('success','Excel exported');
+}
+async function expCSV(){
+  const y=document.getElementById('m-year').value;
+  const r=await api({action:'getMonthlySummary',year:y});if(!r.success)return;
+  const rows=[['Month','Hours','Days','Bible Studies','Goal'],
+    ...(r.summary||[]).map(m=>[MN[m.month-1],m.hours,m.participationDays,m.bibleStudies,m.goalTarget===0?'N/A':m.goalAchieved?'Met':'Not Met'])];
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download=`Ministry_${y}.csv`;a.click();toast('success','CSV exported');
+}
+async function expPDF(){
+  const y=document.getElementById('m-year').value;
+  const r=await api({action:'getMonthlySummary',year:y});if(!r.success)return;
+  const rows=(r.summary||[]).map(m=>`<tr><td>${MN[m.month-1]}</td><td>${m.hours}</td><td>${m.participationDays}</td><td>${m.bibleStudies}</td><td>${m.goalTarget||'N/A'}</td><td>${m.goalTarget===0?'N/A':m.goalAchieved?'✅ Achieved':'❌ Not Met'}</td></tr>`).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>Ministry Report ${y}</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#222}h1{color:#0f2744}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:9px 11px;text-align:left}th{background:#0f2744;color:#fff;font-size:.8rem}tr:nth-child(even){background:#f5f8fb}@media print{.np{display:none}}</style></head><body><h1>Ministry Report – ${y}</h1><p>Publisher: <strong>${CU.name}</strong> &nbsp;|&nbsp; Role: ${fmtRole(CU.role)} &nbsp;|&nbsp; ${new Date().toLocaleDateString('en-GB')}</p><table><thead><tr><th>Month</th><th>Hours</th><th>Days</th><th>Bible Studies</th><th>Goal</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table><br><button class="np" onclick="window.print()" style="padding:9px 20px;background:#0f2744;color:#fff;border:none;border-radius:7px;cursor:pointer">🖨️ Print / Save as PDF</button></body></html>`);
+}
+async function expUsers(){
+  const r=await api({action:'adminGetUsers'});if(!r.success)return;
+  const data=[['Name','Email','Role','Status'],...(r.users||[]).map(u=>[u.name,u.email,fmtRole(u.role),u.status])];
+  const ws=XLSX.utils.aoa_to_sheet(data);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Users');XLSX.writeFile(wb,'Congregation_Users.xlsx');
+}
+
+// ── SYNC ─────────────────────────────────────────────────────
+// Sync log helpers
+function logSync(msg,type='info'){
+  const log=document.getElementById('sync-log');
+  if(!log)return;
+  const ts=new Date().toLocaleTimeString('en-GB');
+  const color=type==='ok'?'var(--green)':type==='err'?'var(--red)':'var(--sky2)';
+  const icon=type==='ok'?'✅':type==='err'?'❌':'ℹ️';
+  const entry=document.createElement('div');
+  entry.style.cssText='padding:5px 8px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start';
+  entry.innerHTML=`<span style="color:${color};flex-shrink:0">${icon}</span><span style="color:var(--text2);flex-shrink:0">${ts}</span><span style="color:var(--text)">${msg}</span>`;
+  // Remove placeholder
+  const placeholder=log.querySelector('div[style*="text-align:center"]');
+  if(placeholder)placeholder.remove();
+  log.insertBefore(entry,log.firstChild);
+}
+function clearSyncLog(){
+  const log=document.getElementById('sync-log');
+  log.innerHTML='<div style="padding:10px;text-align:center;opacity:.5">No sync activity yet</div>';
+}
+function setSyncBanner(msg,type){
+  const b=document.getElementById('sync-status-banner');
+  if(!b)return;
+  const bg=type==='ok'?'rgba(16,185,129,.12)':type==='err'?'rgba(239,68,68,.12)':'rgba(59,130,246,.1)';
+  const bc=type==='ok'?'rgba(16,185,129,.3)':type==='err'?'rgba(239,68,68,.3)':'rgba(59,130,246,.25)';
+  const color=type==='ok'?'var(--green)':type==='err'?'var(--red)':'var(--sky)';
+  const icon=type==='ok'?'✅':type==='err'?'❌':'ℹ️';
+  b.style.cssText=`display:flex;margin-bottom:18px;padding:12px 16px;border-radius:10px;font-size:.86rem;font-weight:500;align-items:center;gap:10px;background:${bg};border:1px solid ${bc};color:${color}`;
+  b.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
+  setTimeout(()=>{b.style.display='none';},5000);
+}
+function setBtnLoading(id,loading,originalText){
+  const btn=document.getElementById(id);if(!btn)return;
+  if(loading){btn.disabled=true;btn.innerHTML='<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px"></span>Loading…';}
+  else{btn.disabled=false;btn.innerHTML=originalText;}
+}
+function fmtTS(d){return d?new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'Never';}
+
+// READ ALL MY DATA from Sheet
+async function syncReadAll(){
+  if(API_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    setSyncBanner('Running in offline mode — reading from local storage instead','info');
+    logSync('Read all: offline mode, loaded from localStorage','info');
+    // Refresh all pages from local store
+    await loadReports();await loadDash();
+    const rpts=gs().reports.filter(r=>r.uid===CU.id);
+    const hrs=rpts.reduce((a,r)=>a+(r.hrs||0),0);
+    document.getElementById('rp-rpts').textContent=rpts.length;
+    document.getElementById('rp-users').textContent=gs().users.length;
+    document.getElementById('rp-hrs').textContent=hrs.toFixed(1);
+    document.getElementById('read-preview').style.display='';
+    document.getElementById('last-read-ts').textContent='Last read: '+fmtTS(new Date());
+    toast('info','Loaded from local storage (offline mode)');
+    return;
+  }
+  setBtnLoading('read-all-btn',true,'📥 Read All My Data');
+  logSync('Starting full read from Google Sheet…','info');
+  try{
+    // Fetch reports
+    const rRes=await api({action:'getUserReports',month:'',year:''});
+    if(!rRes.success)throw new Error(rRes.error||'Failed to read reports');
+    // Store fetched reports into local cache
+    const db=gs();
+    // Merge: remove old ones for this user, add fresh from sheet
+    db.reports=db.reports.filter(r=>r.uid!==CU.id);
+    (rRes.reports||[]).forEach(r=>{db.reports.push({id:r.id,uid:r.userId,date:r.date,hrs:r.hours||0,part:r.participated,bs:r.bibleStudies||0,notes:r.notes||'',cd:r.date});});
+    ss(db);
+    // Fetch dashboard data
+    const dRes=await api({action:'getDashboardData'});
+    const totalHrs=dRes.success?(dRes.month?.hours||0):0;
+    // Update summary display
+    document.getElementById('rp-rpts').textContent=rRes.reports.length;
+    document.getElementById('rp-users').textContent='–';
+    document.getElementById('rp-hrs').textContent=(dRes.success?((dRes.serviceYear?.hours||0).toFixed(1)):'–');
+    document.getElementById('read-preview').style.display='';
+    const ts=new Date();
+    localStorage.setItem('ma_last_read',ts.toISOString());
+    document.getElementById('last-read-ts').textContent='Last read: '+fmtTS(ts);
+    // Refresh pages
+    await loadReports();await loadDash();
+    logSync(`Read complete — ${rRes.reports.length} reports loaded from sheet`,'ok');
+    setSyncBanner(`✅ Successfully read ${rRes.reports.length} reports from Google Sheet`,'ok');
+    toast('success','Data read from Google Sheet');
+  }catch(e){
+    logSync('Read failed: '+e.message,'err');
+    setSyncBanner('Read failed: '+e.message,'err');
+    toast('error','Read failed: '+e.message);
+  }finally{setBtnLoading('read-all-btn',false,'<span>📥 Read All My Data</span>');}
+}
+
+// READ REPORTS ONLY from Sheet
+async function syncReadReports(){
+  if(API_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    setSyncBanner('Offline mode — reading from local storage','info');
+    logSync('Read reports: offline mode','info');
+    await loadReports();
+    toast('info','Reports refreshed from local storage');
+    return;
+  }
+  setBtnLoading('read-reports-btn',true,'📋 Read Reports Only');
+  logSync('Reading reports from Google Sheet…','info');
+  try{
+    const mo=document.getElementById('f-month')?.value||'';
+    const yr=document.getElementById('f-year')?.value||'';
+    const res=await api({action:'getUserReports',month:mo,year:yr});
+    if(!res.success)throw new Error(res.error||'Failed to read reports');
+    // Merge into local cache
+    const db=gs();
+    db.reports=db.reports.filter(r=>r.uid!==CU.id);
+    (res.reports||[]).forEach(r=>{db.reports.push({id:r.id,uid:r.userId,date:r.date,hrs:r.hours||0,part:r.participated,bs:r.bibleStudies||0,notes:r.notes||'',cd:r.date});});
+    ss(db);
+    await loadReports();
+    document.getElementById('rp-rpts').textContent=res.reports.length;
+    document.getElementById('read-preview').style.display='';
+    document.getElementById('last-read-ts').textContent='Last read: '+fmtTS(new Date());
+    logSync(`Reports read — ${res.reports.length} records from sheet`,'ok');
+    setSyncBanner(`Read ${res.reports.length} reports from sheet`,'ok');
+    toast('success',res.reports.length+' reports read from Google Sheet');
+  }catch(e){
+    logSync('Read reports failed: '+e.message,'err');
+    setSyncBanner('Read failed: '+e.message,'err');
+    toast('error','Read failed: '+e.message);
+  }finally{setBtnLoading('read-reports-btn',false,'<span>📋 Read Reports Only</span>');}
+}
+
+// WRITE ALL MY REPORTS to Sheet
+async function syncWriteAll(){
+  if(API_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    setSyncBanner('Offline mode — data already stored in local storage','info');
+    logSync('Write all: offline mode, nothing to push','info');
+    const db=gs();const rpts=db.reports.filter(r=>r.uid===CU.id);
+    document.getElementById('write-result-text').textContent=`${rpts.length} reports are stored locally. Connect Apps Script to push to Google Sheet.`;
+    document.getElementById('write-preview').style.display='';
+    toast('info','Running offline — connect Apps Script to enable sheet writes');
+    return;
+  }
+  setBtnLoading('write-all-btn',true,'📤 Write All My Reports');
+  logSync('Starting write of all reports to Google Sheet…','info');
+  try{
+    const db=gs();
+    const localRpts=db.reports.filter(r=>r.uid===CU.id);
+    if(!localRpts.length){
+      logSync('No local reports to write','info');
+      toast('info','No local reports to write');
+      setBtnLoading('write-all-btn',false,'<span>📤 Write All My Reports</span>');
+      return;
+    }
+    let written=0,skipped=0,errors=0;
+    // First read existing IDs from sheet to avoid duplicates
+    const existing=await api({action:'getUserReports',month:'',year:''});
+    const existingIds=new Set((existing.reports||[]).map(r=>r.id));
+    for(const r of localRpts){
+      try{
+        if(existingIds.has(r.id)){
+          // Update existing
+          const res=await api({action:'updateReport',reportId:r.id,date:r.date,hours:r.hrs||0,participated:r.part,bibleStudies:r.bs||0,notes:r.notes||''});
+          if(res.success){written++;logSync(`Updated report ${r.id} (${r.date})`,'ok');}
+          else{skipped++;logSync(`Skip ${r.id}: ${res.error}`,'info');}
+        }else{
+          // New — save to sheet
+          const res=await api({action:'saveReport',date:r.date,hours:r.hrs||0,participated:r.part,bibleStudies:r.bs||0,notes:r.notes||''});
+          if(res.success){written++;logSync(`Wrote new report for ${r.date}`,'ok');}
+          else{errors++;logSync(`Error writing ${r.date}: ${res.error}`,'err');}
+        }
+      }catch(e2){errors++;logSync(`Exception for ${r.date}: `+e2.message,'err');}
+    }
+    const summary=`Wrote ${written} | Skipped ${skipped} | Errors ${errors}`;
+    document.getElementById('write-result-text').textContent=summary;
+    document.getElementById('write-preview').style.display='';
+    localStorage.setItem('ma_last_write',new Date().toISOString());
+    document.getElementById('last-write-ts').textContent='Last write: '+fmtTS(new Date());
+    logSync('Write complete — '+summary,'ok');
+    setSyncBanner(errors?`Write finished with ${errors} error(s)`:'All reports written to Google Sheet',errors?'err':'ok');
+    toast(errors?'error':'success',summary);
+  }catch(e){
+    logSync('Write failed: '+e.message,'err');
+    setSyncBanner('Write failed: '+e.message,'err');
+    toast('error','Write failed: '+e.message);
+  }finally{setBtnLoading('write-all-btn',false,'<span>📤 Write All My Reports</span>');}
+}
+
+// WRITE PROFILE to Sheet
+async function syncWriteProfile(){
+  if(API_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    setSyncBanner('Offline mode — profile is saved locally','info');
+    logSync('Write profile: offline mode','info');
+    toast('info','Offline — profile updates stay local');
+    return;
+  }
+  setBtnLoading('write-profile-btn',true,'👤 Update My Profile');
+  logSync('Writing profile to Google Sheet…','info');
+  try{
+    const res=await api({action:'updateProfile',name:CU.name,role:CU.role});
+    if(!res.success)throw new Error(res.error||'Profile update failed');
+    logSync('Profile updated in sheet','ok');
+    setSyncBanner('Profile written to Google Sheet','ok');
+    toast('success','Profile updated in Google Sheet');
+  }catch(e){
+    logSync('Profile write failed: '+e.message,'err');
+    setSyncBanner('Profile write failed: '+e.message,'err');
+    toast('error','Profile write failed: '+e.message);
+  }finally{setBtnLoading('write-profile-btn',false,'<span>👤 Update My Profile</span>');}
+}
+
+// ADMIN: Read All Users from Sheet
+async function syncReadAllUsers(){
+  if(!CU||CU.role!=='Administrator'){toast('error','Admin only');return;}
+  if(API_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    const db=gs();
+    document.getElementById('admin-sync-result').style.display='';
+    document.getElementById('admin-sync-result').textContent=`Local store has ${db.users.length} users and ${db.reports.length} total reports.`;
+    logSync('Admin read (offline): '+db.users.length+' users found','ok');
+    return;
+  }
+  logSync('Admin: reading all users from sheet…','info');
+  try{
+    const res=await api({action:'adminGetUsers'});
+    if(!res.success)throw new Error(res.error);
+    const el=document.getElementById('admin-sync-result');
+    el.style.display='';
+    el.innerHTML=`<strong>${res.users.length} users</strong> in Google Sheet:<br><br>`+
+      res.users.map(u=>`• <strong>${u.name}</strong> — ${u.role} (${u.status})`).join('<br>');
+    logSync(`Admin read: ${res.users.length} users from sheet`,'ok');
+    setSyncBanner(`Read ${res.users.length} users from Google Sheet`,'ok');
+  }catch(e){
+    logSync('Admin read failed: '+e.message,'err');
+    toast('error',e.message);
+  }
+}
+
+// ADMIN: Write Audit Log Entry
+async function syncWriteAuditLog(){
+  if(!CU||CU.role!=='Administrator'){toast('error','Admin only');return;}
+  logSync('Writing audit log entry to sheet…','info');
+  try{
+    const res=await api({action:'writeAuditLog',action2:'ManualSync',detail:'Admin manually triggered sync from app'});
+    if(res.success){logSync('Audit log entry written','ok');toast('success','Audit log written to sheet');}
+    else{logSync('Audit log write failed: '+(res.error||'unknown'),'err');toast('error',res.error||'Failed');}
+  }catch(e){logSync('Exception: '+e.message,'err');toast('error',e.message);}
+}
+
+// Show offline notice on sync page if no API configured
+function initSyncPage(){
+  const offline=API_URL==='YOUR_APPS_SCRIPT_URL_HERE';
+  const notice=document.getElementById('offline-notice');
+  if(notice)notice.style.display=offline?'block':'none';
+  if(CU?.role==='Administrator'){const ac=document.getElementById('sync-admin-card');if(ac)ac.style.display='';}
+  // Restore last sync timestamps
+  const lr=localStorage.getItem('ma_last_read');
+  const lw=localStorage.getItem('ma_last_write');
+  const lrEl=document.getElementById('last-read-ts');
+  const lwEl=document.getElementById('last-write-ts');
+  if(lrEl&&lr)lrEl.textContent='Last read: '+fmtTS(lr);
+  if(lwEl&&lw)lwEl.textContent='Last write: '+fmtTS(lw);
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pg=document.getElementById('page-'+name);
+  if(!pg){console.error('Page not found: page-'+name);return;}
+  pg.classList.add('active');
+  document.querySelectorAll('[data-p]').forEach(n=>n.classList.toggle('active',n.dataset.p===name));
+  closeDD();window.scrollTo(0,0);
+  if(name==='monthly')loadMonthly();
+  if(name==='sy')loadSY();
+  if(name==='admin')loadAdmin();
+  if(name==='sync')initSyncPage();
+  if(name==='charts'){if(!chHrs)initCharts();else loadSY();}
+}
+
+// ── MODAL ────────────────────────────────────────────────────
+function openMo(id){const el=document.getElementById(id);if(el)el.classList.add('active');else console.error('Modal not found:',id);}
+function closeMo(id){const el=document.getElementById(id);if(el)el.classList.remove('active');}
+// modal overlay listeners registered in DOMContentLoaded
+
+// ── DROPDOWN ─────────────────────────────────────────────────
+function togDD(){document.getElementById('udd').classList.toggle('open');}
+function closeDD(){document.querySelectorAll('.dm').forEach(d=>d.classList.remove('open'));}
+document.addEventListener('click',e=>{if(!e.target.closest('.dd'))closeDD();});
+
+// ── THEME ────────────────────────────────────────────────────
+function toggleTheme(){
+  const l=document.documentElement.dataset.theme==='light';
+  document.documentElement.dataset.theme=l?'':'light';
+  document.getElementById('theme-btn').textContent=l?'🌙':'☀️';
+  localStorage.setItem('ma_theme',l?'dark':'light');
+}
+(()=>{const t=localStorage.getItem('ma_theme');if(t==='light'){document.documentElement.dataset.theme='light';document.getElementById('theme-btn').textContent='☀️';}})();
+
+// ── TOAST ────────────────────────────────────────────────────
+function toast(type,msg,ms=3500){
+  const ic={success:'✅',error:'❌',info:'ℹ️'};
+  const el=document.createElement('div');el.className='toast';
+  el.innerHTML=`<span>${ic[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.getElementById('tc').appendChild(el);
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),260);},ms);
+}
+
+// ── PWA ──────────────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dPrm=e;document.getElementById('ib').classList.add('show');});
+function installApp(){if(dPrm){dPrm.prompt();dPrm.userChoice.then(()=>{dPrm=null;document.getElementById('ib').classList.remove('show');});}}
+
+// ── SEED DEMO ADMIN ──────────────────────────────────────────
+(()=>{
+  const db=gs();
+  if(!db.users.length){
+    db.users.push({id:'ADMIN001',name:'Admin User',email:'admin@klcyn.org',hash:sh('Admin@1234'),role:'Administrator',status:'Active',cd:'2024-09-01',ll:''});
+    ss(db);
+  }
+})();
+
+// ── INIT ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  // Register modal backdrop-close after DOM is ready
+  document.querySelectorAll('.mo').forEach(o=>{
+    o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('active');});
+  });
+  const sess=JSON.parse(localStorage.getItem('ma_sess')||sessionStorage.getItem('ma_sess')||'null');
+  if(sess?.user){CU=sess.user;setTimeout(()=>{document.getElementById('app-loader').classList.add('hidden');boot();},1100);}
+  else{setTimeout(()=>{document.getElementById('app-loader').classList.add('hidden');document.getElementById('auth-screen').classList.add('active');},1100);}
+});
+</script>
+</body>
+</html>
